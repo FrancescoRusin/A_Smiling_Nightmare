@@ -1,20 +1,21 @@
-#include "Map.h"
+#include "General.h"
 
 int main(int, char**) {
-    View_handler view;
-    view.set_empty_box(R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Yellow_texture.jpg)");
-    view.set_wall(R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Brick_wall.jpg)");
-    view.room_change_animation(vector<vector<bool>>(10, vector<bool>(10)), vector<Entity>(), UP, 15);
+    General_handler view;
+    view.room_change_animation(vector<vector<bool>>(10, vector<bool>(10)), vector<Entity>(), UP, 3);
     vector<vector<bool>> new_room(10, vector<bool>(10));
+    bool keep_open = true;
     int counter = 0;
-    while (counter < 100) {
+    while (keep_open) {
         view.base_render();
-        new_room[counter / 10][counter % 10] = true;
-        view.room_change_animation(new_room, vector<Entity>(), UP, 5);
-        for (int i = 0; i < 60; ++i) {
+        for (int i = 0; i < 240; ++i) {
             view.base_render();
+            keep_open = view.poll_events_and_update_positions();
         }
+        new_room[counter / 10][counter % 10] = true;
+        view.room_change_animation(new_room, vector<Entity>(), LEFT, 3);
         ++counter;
+        counter %= 100;
     }
     return 0;
 }
