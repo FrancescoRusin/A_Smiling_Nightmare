@@ -2,13 +2,6 @@
 #include "Map.h"
 #include "Entity.h"
 
-void Map_handler::setup() noexcept {
-    SDL_Init(0);
-    window = SDL_CreateWindow("Application", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                              500, 500, static_cast<SDL_WindowFlags>(0));
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
-}
-
 void Map_handler::set_wall(const string& path) {
     wall_texture = IMG_LoadTexture(renderer, path.c_str());
 }
