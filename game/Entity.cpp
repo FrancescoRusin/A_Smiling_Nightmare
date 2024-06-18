@@ -4,6 +4,5 @@
 
 #include "Entity.h"
 
-void Entity::render(SDL_Renderer *renderer) {
-
+void Entity::render(SDL_Renderer *renderer) const noexcept {
 }
