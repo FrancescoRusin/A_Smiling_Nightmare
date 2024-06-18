@@ -1,0 +1,17 @@
+if(MINGW)
+    if(${CMAKE_SOURCE_DIR} STREQUAL "C:/Users/Francesco/CLionProjects/SS_game")
+        set(SDL2_PATH C:/Users/Francesco/Desktop/Progetti/Librerie/SDL2-2.28.4/x86_64-w64-mingw32)
+    else ()
+        set(SDL2_PATH C:/Users/Admi9n/Desktop/Librerie/SDL2/x86_64-w64-mingw32)
+    endif()
+    include_directories(SYSTEM "${SDL2_PATH}/include/SDL2")
+
+    set(MINGW_STATIC "-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -lcomctl32 -lpsapi -Wl,-Bdynamic")
+    set(SDL2_STATIC " -Wl,-Bstatic -lmingw32 ${SDL2_PATH}/lib/libSDL2.a ${SDL2_PATH}/lib/libSDL2main.a ${SDL2_PATH}/lib/libSDL2_image.a -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -lm -ldinput8 -ldxguid -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lsetupapi -lversion -luuid -Wl,-Bdynamic")
+
+    set(CMAKE_CXX_STANDARD_LIBRARIES "${SDL2_STATIC} ${MINGW_STATIC} ${CMAKE_CXX_STANDARD_LIBRARIES}")
+else ()
+    find_package(SDL2 REQUIRED)
+    target_include_directories(${CMAKE_PROJECT_NAME} ${SDL2_INCLUDE_DIRS})
+    target_link_libraries(${CMAKE_PROJECT_NAME} ${SDL2_LIBRARIES})
+endif()
