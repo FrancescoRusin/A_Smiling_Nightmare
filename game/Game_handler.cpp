@@ -1,7 +1,18 @@
 #include "Game_handler.h"
 
 void Game_handler::game() {
+    mt19937_64 rng = mt19937_64(duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count());
+    uniform_int_distribution<int> uniform4 = uniform_int_distribution<int>(0, 4);
+    vector<Direction> all_directions{UP, DOWN, LEFT, RIGHT};
     handler.initialize();
+    vector<vector<vector<Direction>>> floor(3, vector<vector<Direction>>(3, vector<Direction>(0)));
+    vector<vector<bool>> reachable(3, vector<bool>(3));
+    floor[0][0] = vector<Direction>{UP, RIGHT};
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            vector<Direction>
+        }
+    }
     vector<vector<bool>> room = build_room(vector<Direction>());
     vector<Enemy> enemies = build_enemies();
     handler.room_change_animation(room, enemies, NONE);
