@@ -1,11 +1,29 @@
 #include "General.h"
 
-void General_handler::room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Slide_direction direction) {
+void General_handler::initialize() {
+    rng = mt19937_64(duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count());
+    SDL_Init(SDL_INIT_VIDEO);
+    IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
+    SDL_CreateWindowAndRenderer(800, 800, 0, &window, &renderer);
+    sprite_map[WALL] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Brick_wall.jpg)");
+    sprite_map[EMPTY_BOX] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Yellow_texture.jpg)");
+    sprite_map[CLOWN] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Clown.png)");
+    sprite_map[KARATEKA] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Blackbelt.png)");
+    sprite_map[PROTAGONIST] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Smile.png)");
+    sprite_map[PROTAGONIST_SHOT] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Orange_ball.png)");
+    sprite_map[ENEMY_SHOT] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Blue_ball.png)");
+    swing_texture = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Swing.png)");
+    protagonist = Entity(vector<int>{400, 400}, 35, 35, 0, PROTAGONIST);
+    enemies = {};
+    game_stats = Game_stats(20, 30, 1.0 / 120, 1.0 / 30, 20);}
+
+void General_handler::room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Direction direction) {
     assert(new_room.size() == 10 && all_of(new_room.begin(), new_room.end(), [](const vector<bool> &v) { return v.size() == 10; }));
     constexpr double alpha_tick = 1.5;
     constexpr double slide_tick = 3;
     if (room.empty()) {
         room = new_room;
+        enemies = new_room_enemies;
         SDL_SetTextureBlendMode(sprite_map[WALL], SDL_BLENDMODE_BLEND);
         SDL_SetTextureBlendMode(sprite_map[EMPTY_BOX], SDL_BLENDMODE_BLEND);
         SDL_SetTextureBlendMode(sprite_map[PROTAGONIST], SDL_BLENDMODE_BLEND);
@@ -30,7 +48,7 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
         }
         return;
     }
-    for (double i = 0; i < 500; i += slide_tick) {
+    for (double i = 0; i < 800; i += slide_tick) {
         shifted_render(new_room, new_room_enemies, i, direction);
     }
     room = new_room;
@@ -39,16 +57,23 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
 
 void General_handler::base_render() noexcept {
     SDL_RenderClear(renderer);
-    static auto map_crop = SDL_Rect(0, 0, 50, 50);
+    static auto map_crop = SDL_Rect(0, 0, 80, 80);
     for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
-            map_crop.x = 50 * i;
-            map_crop.y = 50 * j;
+            map_crop.x = 80 * i;
+            map_crop.y = 80 * j;
             SDL_RenderCopy(renderer, sprite_map[room[i][j] ? WALL : EMPTY_BOX], nullptr, &map_crop);
         }
     }
     SDL_SetTextureColorMod(sprite_map[PROTAGONIST], 255, 255 * (1 - protagonist.hit_tick / 60.0), 255 * (1 - protagonist.hit_tick / 60.0));
     protagonist.render(renderer, sprite_map[PROTAGONIST]);
+    if (protagonist_swing) {
+        SDL_SetTextureAlphaMod(swing_texture, 255 * 30 / protagonist_swing);
+        double angle = atan2(protagonist_swing_direction[1], protagonist_swing_direction[0]) * 180 / M_PI + 45;
+        const auto rect = SDL_Rect(protagonist.position[0] - 2 * protagonist.radius, protagonist.position[1] - 2 * protagonist.radius, 4 * protagonist.radius, 4 * protagonist.radius);
+        SDL_RenderCopyEx(renderer, swing_texture, nullptr, &rect, angle, nullptr, SDL_FLIP_NONE);
+        --protagonist_swing;
+    }
     for (const Enemy &e: enemies) {
         SDL_SetTextureColorMod(sprite_map[e.type], 255, 255  * (1 - e.hit_tick / 60.0), 255  * (1 - e.hit_tick / 60.0));
         e.render(renderer, sprite_map[e.type]);
@@ -64,9 +89,9 @@ void General_handler::base_render() noexcept {
     framerate_last_tick = SDL_GetTicks();
 }
 
-void General_handler::shifted_render(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, const int shift, const Slide_direction direction) noexcept {
+void General_handler::shifted_render(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, const int shift, const Direction direction) noexcept {
     SDL_RenderClear(renderer);
-    static auto map_crop = SDL_Rect(0, 0, 50, 50);
+    static auto map_crop = SDL_Rect(0, 0, 80, 80);
     static int new_map_crop[2];
     static int tick[2];
     switch (direction) {
@@ -74,34 +99,34 @@ void General_handler::shifted_render(const vector<vector<bool>> &new_room, const
             tick[0] = 0;
             tick[1] = shift;
             new_map_crop[0] = 0;
-            new_map_crop[1] = -500;
+            new_map_crop[1] = -800;
             break;
         case DOWN:
             tick[0] = 0;
             tick[1] = -shift;
             new_map_crop[0] = 0;
-            new_map_crop[1] = 500;
+            new_map_crop[1] = 800;
             break;
         case RIGHT:
             tick[0] = -shift;
             tick[1] = 0;
-            new_map_crop[0] = 500;
+            new_map_crop[0] = 800;
             new_map_crop[1] = 0;
             break;
         case LEFT:
             tick[0] = shift;
             tick[1] = 0;
-            new_map_crop[0] = -500;
+            new_map_crop[0] = -800;
             new_map_crop[1] = 0;
             break;
     }
     for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
-            map_crop.x = 50 * i + tick[0];
-            map_crop.y = 50 * j + tick[1];
+            map_crop.x = 80 * i + tick[0];
+            map_crop.y = 80 * j + tick[1];
             SDL_RenderCopy(renderer, sprite_map[room[i][j] ? WALL : EMPTY_BOX], nullptr, &map_crop);
-            map_crop.x = 50 * i + new_map_crop[0] + tick[0];
-            map_crop.y = 50 * j + new_map_crop[1] + tick[1];
+            map_crop.x = 80 * i + new_map_crop[0] + tick[0];
+            map_crop.y = 80 * j + new_map_crop[1] + tick[1];
             SDL_RenderCopy(renderer, sprite_map[new_room[i][j] ? WALL : EMPTY_BOX], nullptr, &map_crop);
         }
     }
@@ -126,18 +151,11 @@ void General_handler::shifted_render(const vector<vector<bool>> &new_room, const
 
 bool General_handler::poll_events_and_update_positions() noexcept {
     static SDL_Event event;
-    Slide_direction shoot = NONE;
+    Direction shoot = NONE;
     bool swing = false;
     while (SDL_PollEvent(&event)) {
-        switch (event.type) {
-            case SDL_QUIT:
-                return false;
-            case SDL_KEYDOWN:
-                switch (event.key.keysym.sym) {
-                    case SDLK_SPACE:
-                        swing = true;
-                        break;
-                }
+        if (event.type == SDL_QUIT) {
+            return false;
         }
     }
     const Uint8 *keyboard_status = SDL_GetKeyboardState(nullptr);
@@ -165,35 +183,70 @@ bool General_handler::poll_events_and_update_positions() noexcept {
     if (keyboard_status[SDL_SCANCODE_DOWN]) {
         shoot = DOWN;
     }
+    if (keyboard_status[SDL_SCANCODE_SPACE]) {
+        swing = true;
+    }
     if (protagonist.action_tick) {
         --protagonist.action_tick;
     } else if (swing) {
-        protagonist.action_tick = 12;
-        cout << "swing!\n";
+        protagonist.action_tick = 30;
+        protagonist_swing = 6;
+        protagonist_swing_direction = vector<int>(2);
+        switch (shoot) {
+            case UP:
+                protagonist_swing_direction[0] = 0;
+                protagonist_swing_direction[1] = -1;
+                break;
+            case DOWN:
+                protagonist_swing_direction[0] = 0;
+                protagonist_swing_direction[1] = 1;
+                break;
+            case RIGHT:
+                protagonist_swing_direction[0] = 1;
+                protagonist_swing_direction[1] = 0;
+                break;
+            case LEFT:
+                protagonist_swing_direction[0] = -1;
+                protagonist_swing_direction[1] = 0;
+                break;
+            case NONE:
+                protagonist.action_tick = 0;
+                protagonist_swing = 0;
+        }
+        for (Enemy &e : enemies) {
+            double distance_norm = point_point_distance(protagonist.position, e.position);
+            if (distance_norm < 3 * protagonist.radius + e.radius) {
+                vector<int> distance{e.position[0] - protagonist.position[0], e.position[1] - protagonist.position[1]};
+                if (distance[0] * protagonist_swing_direction[0] + distance[1] * protagonist_swing_direction[1] > distance_norm * sqrt(.5)) {
+                    e.hit_tick = 60;
+                    e.hp -= 5;
+                }
+            }
+        }
     } else {
-        protagonist.action_tick = 12;
+        protagonist.action_tick = 20;
         if (shoot != NONE) {
-            protagonist_shots.emplace_back(protagonist.position, 3, 0, ++id_counter, PROTAGONIST_SHOT);
+            protagonist_shots.emplace_back(protagonist.position, 10, 0, ++id_counter, PROTAGONIST_SHOT);
         }
         switch (shoot) {
             case UP:
                 protagonist_shots.rbegin()->velocity[0] = 0;
-                protagonist_shots.rbegin()->velocity[1] = -10;
+                protagonist_shots.rbegin()->velocity[1] = -20;
                 break;
             case DOWN:
                 protagonist_shots.rbegin()->velocity[0] = 0;
-                protagonist_shots.rbegin()->velocity[1] = 10;
+                protagonist_shots.rbegin()->velocity[1] = 20;
                 break;
             case RIGHT:
-                protagonist_shots.rbegin()->velocity[0] = 10;
+                protagonist_shots.rbegin()->velocity[0] = 20;
                 protagonist_shots.rbegin()->velocity[1] = 0;
                 break;
             case LEFT:
-                protagonist_shots.rbegin()->velocity[0] = -10;
+                protagonist_shots.rbegin()->velocity[0] = -20;
                 protagonist_shots.rbegin()->velocity[1] = 0;
                 break;
             case NONE:
-                protagonist.action_tick -= 12;
+                protagonist.action_tick = 0;
         }
     }
 
@@ -220,8 +273,7 @@ bool General_handler::poll_events_and_update_positions() noexcept {
         switch (e.type) {
             case KARATEKA:
                 if (karateka_kick_animation[e.id] == 0) {
-                    if (uniform_real(rng) < e.special_action_probability) {
-                        cout << "kick!\n";
+                    if (uniform_real(rng) < game_stats.karateka_kick_probability) {
                         karateka_kick_animation[e.id] = 1;
                     } else {
                         e.velocity[0] = static_cast<int>(protagonist_direction[0] * e.movement_average + e.movement_control * gauss(rng));
@@ -231,20 +283,25 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                     e.position[0] += e.velocity[0];
                     e.position[1] += e.velocity[1];
                 } else {
-                    if (++karateka_kick_animation[e.id] > 30) {
+                    if (++karateka_kick_animation[e.id] > game_stats.karateka_kick_delay) {
                         if (avoid_wall_collision(e)) {
                             karateka_kick_animation[e.id] = 0;
                         }
                         e.position[0] += e.velocity[0];
                         e.position[1] += e.velocity[1];
-                    } else if (karateka_kick_animation[e.id] == 20) {
-                        e.velocity[0] = static_cast<int>(protagonist_direction[0] * 10);
-                        e.velocity[1] = static_cast<int>(protagonist_direction[1] * 10);
+                    } else if (karateka_kick_animation[e.id] < game_stats.karateka_kick_delay * .67) {
+                        e.velocity[0] = static_cast<int>(protagonist_direction[0] * game_stats.karateka_kick_speed);
+                        e.velocity[1] = static_cast<int>(protagonist_direction[1] * game_stats.karateka_kick_speed);
                     }
                 }
                 break;
             case CLOWN:
-                if (uniform_real(rng) < e.movement_control) {
+                if (uniform_real(rng) < game_stats.clown_shoot_probability) {
+                    enemy_shots.emplace_back(e.position, 10, 0, ++id_counter, ENEMY_SHOT);
+                    enemy_shots.rbegin()->velocity[0] = static_cast<int>(protagonist_direction[0] * game_stats.clown_shoot_speed);
+                    enemy_shots.rbegin()->velocity[1] = static_cast<int>(protagonist_direction[1] * game_stats.clown_shoot_speed);
+                }
+                else if (uniform_real(rng) < e.movement_control) {
                     e.velocity[0] = static_cast<int>(gauss(rng)) + (2 * coin_flip(rng) - 1) * e.movement_average;
                     e.velocity[1] = static_cast<int>(gauss(rng)) + (2 * coin_flip(rng) - 1) * e.movement_average;
                 }
@@ -287,9 +344,8 @@ bool General_handler::poll_events_and_update_positions() noexcept {
     } else {
         for (const Enemy &e: enemies) {
             if (collide(previous_positions, protagonist, e)) {
-                cout << "Check!\n";
                 protagonist.hit_tick = 60;
-                protagonist.hp -= 5;
+                protagonist.hp -= 3;
                 break;
             }
         }
@@ -297,6 +353,7 @@ bool General_handler::poll_events_and_update_positions() noexcept {
             for (int i = 0; i < enemy_shots.size(); ++i) {
                 if (collide(previous_positions, enemy_shots[i], protagonist)) {
                     enemy_shots.erase(next(enemy_shots.begin(), i));
+                    protagonist.hit_tick = 60;
                     --i;
                 }
             }
@@ -311,9 +368,6 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                 break;
             }
         }
-    }
-    if (protagonist.action_tick) {
-        --protagonist.action_tick;
     }
     protagonist.velocity[0] = protagonist.velocity[1] = 0;
     if (protagonist.hp <= 0) {
@@ -334,13 +388,13 @@ bool General_handler::collide(const map<int, vector<int>> &previous_positions, c
 
 bool General_handler::avoid_wall_collision(Entity &entity) {
     bool collision = false;
-    vector<int> position_cell{entity.position[0] / 50, entity.position[1] / 50};
+    vector<int> position_cell{entity.position[0] / 80, entity.position[1] / 80};
     if (position_cell[0] < 0 || position_cell[0] > 9 || position_cell[1] < 0 || position_cell[1] > 9) {
         entity.velocity[0] = 0;
         entity.velocity[1] = 0;
         return true;
     }
-    if (entity.position[0] % 50 <= entity.radius &&
+    if (entity.position[0] % 80 <= entity.radius &&
         ((position_cell[0] > 0 && room[position_cell[0] - 1][position_cell[1]]) ||
          (position_cell[0] == 0))) {
         if (entity.velocity[0] < 0) {
@@ -348,7 +402,7 @@ bool General_handler::avoid_wall_collision(Entity &entity) {
             entity.velocity[0] = 0;
         }
     }
-    if (entity.position[0] % 50 >= 50 - entity.radius &&
+    if (entity.position[0] % 80 >= 80 - entity.radius &&
         ((position_cell[0] < 9 && room[position_cell[0] + 1][position_cell[1]]) ||
          (position_cell[0] == 9))) {
         if (entity.velocity[0] > 0) {
@@ -356,7 +410,7 @@ bool General_handler::avoid_wall_collision(Entity &entity) {
             entity.velocity[0] = 0;
         }
     }
-    if (entity.position[1] % 50 <= entity.radius &&
+    if (entity.position[1] % 80 <= entity.radius &&
         ((position_cell[1] > 0 && room[position_cell[0]][position_cell[1] - 1]) ||
          (position_cell[1] == 0))) {
         if (entity.velocity[1] < 0) {
@@ -364,7 +418,7 @@ bool General_handler::avoid_wall_collision(Entity &entity) {
             entity.velocity[1] = 0;
         }
     }
-    if (entity.position[1] % 50 >= 50 - entity.radius &&
+    if (entity.position[1] % 80 >= 80 - entity.radius &&
         ((position_cell[1] < 9 && room[position_cell[0]][position_cell[1] + 1]) ||
          (position_cell[1] == 9))) {
         if (entity.velocity[1] > 0) {

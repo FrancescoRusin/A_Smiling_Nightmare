@@ -5,11 +5,11 @@
 
 #ifndef SS_GAME_MAP_H
 
-#define PROTAGONIST_SPEED 5;
+#define PROTAGONIST_SPEED 8;
 
 using namespace std;
 
-enum Slide_direction {
+enum Direction {
     UP, DOWN, LEFT, RIGHT, NONE
 };
 
@@ -27,7 +27,9 @@ struct Entity {
     int8_t action_tick{};
     Sprite_type type;
 
-    Entity() {}
+    Entity() : type(EMPTY_BOX) {};
+
+    Entity(const Entity &entity) = default;
 
     Entity(const vector<int> &position, int radius, int hp, int id, Sprite_type type) {
         this->position[0] = position[0];
@@ -40,22 +42,42 @@ struct Entity {
         this->type = type;
     }
 
+    Entity& operator=(const Entity &entity) {
+        this->position[0] = entity.position[0];
+        this->position[1] = entity.position[1];
+        this->velocity[0] = entity.velocity[0];
+        this->velocity[1] = entity.velocity[1];
+        this->radius = entity.radius;
+        this->hp = entity.hp;
+        this->id = entity.id;
+        this->hit_tick = entity.hit_tick;
+        this->action_tick = entity.action_tick;
+        this->type = entity.type;
+        return *this;
+    }
+
     void render(SDL_Renderer *renderer, SDL_Texture *texture) const noexcept;
 };
 
 struct Enemy : public Entity {
     double movement_average{};
     double movement_control{};
-    double special_action_probability{};
 
     Enemy() : Entity() {}
 
     Enemy(const vector<int> &position, int radius, int hp, int id, Sprite_type type,
-          double movement_average, double movement_control, double special_action_probability) : Entity(position, radius, hp, id, type) {
+          double movement_average, double movement_control) : Entity(position, radius, hp, id, type) {
         this->movement_average = movement_average;
         this->movement_control = movement_control;
-        this->special_action_probability = special_action_probability;
     }
+};
+
+struct Game_stats {
+    int karateka_kick_speed;
+    int karateka_kick_delay;
+    double karateka_kick_probability;
+    double clown_shoot_probability;
+    int clown_shoot_speed;
 };
 
 class General_handler {
@@ -64,37 +86,31 @@ class General_handler {
     vector<vector<bool>> room;
     map<Sprite_type, SDL_Texture *> sprite_map{};
     map<int, int> karateka_kick_animation{};
-    map<int, vector<int>> karateka_kick_velocity{};
     Entity protagonist;
-    vector<Enemy> enemies{};
     vector<Entity> enemy_shots{};
     vector<Entity> protagonist_shots{};
+    int protagonist_swing{};
+    vector<int> protagonist_swing_direction{};
+    SDL_Texture *swing_texture{};
+
     mt19937_64 rng;
     normal_distribution<double> gauss = normal_distribution<double>();
     uniform_real_distribution<double> uniform_real = uniform_real_distribution<double>(0, 1);
     uniform_int_distribution<int> coin_flip = uniform_int_distribution<int>(0, 1);
 
     Uint32 framerate_last_tick = 0;
-    int id_counter = 0;
 
+    Game_stats game_stats{};
 
-    void shifted_render(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, int shift, Slide_direction direction) noexcept;
+    void shifted_render(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, int shift, Direction direction) noexcept;
+
+    bool avoid_wall_collision(Entity &entity);
+
+    bool collide(const map<int, vector<int>> &previous_positions, const Entity &entity1, const Entity &entity2);
 public:
-    General_handler() {
-        rng = mt19937_64(duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count());
-        SDL_Init(SDL_INIT_VIDEO);
-        IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
-        SDL_CreateWindowAndRenderer(500, 500, 0, &window, &renderer);
-        sprite_map[WALL] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Brick_wall.jpg)");
-        sprite_map[EMPTY_BOX] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Yellow_texture.jpg)");
-        sprite_map[CLOWN] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Clown.png)");
-        sprite_map[KARATEKA] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Blackbelt.png)");
-        sprite_map[PROTAGONIST] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Smile.png)");
-        sprite_map[PROTAGONIST_SHOT] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Orange_ball.png)");
-        sprite_map[ENEMY_SHOT] = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Blue_ball.png)");
-        protagonist = Entity(vector<int>{250, 250}, 20, 20, 0, PROTAGONIST);
-        enemies = {Enemy(vector<int>{100, 100}, 20, 20, ++id_counter, KARATEKA, 4, 1, 1 / 120.0), Enemy(vector<int>{100, 400}, 20, 20, ++id_counter, CLOWN, 1, .33, .01)};
-    }
+    int id_counter = 0;
+    vector<Enemy> enemies{};
+    General_handler() = default;
 
     ~General_handler() {
         SDL_DestroyWindow(window);
@@ -104,15 +120,13 @@ public:
         }
     }
 
-    void room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Slide_direction);
+    void initialize();
+
+    void room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Direction);
 
     void base_render() noexcept;
 
     bool poll_events_and_update_positions() noexcept;
-
-    bool avoid_wall_collision(Entity &entity);
-
-    bool collide(const map<int, vector<int>> &previous_positions, const Entity &entity1, const Entity &entity2);
 };
 
 double line_point_distance(int *line, const vector<int> &point);
