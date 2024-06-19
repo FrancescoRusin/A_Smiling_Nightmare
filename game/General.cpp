@@ -1,15 +1,15 @@
 #include "General.h"
 
-void General_handler::room_change_animation(const vector<vector<bool>> &new_room, const vector<Entity> &new_room_entities, Slide_direction direction, double t) {
+void General_handler::room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Slide_direction direction) {
     assert(new_room.size() == 10 && all_of(new_room.begin(), new_room.end(), [](const vector<bool> &v) { return v.size() == 10; }));
+    constexpr double alpha_tick = 1.5;
+    constexpr double slide_tick = 3;
     if (room.empty()) {
         room = new_room;
-        entities = new_room_entities;
-        const double alpha_tick = 255 / (60 * t);
         SDL_SetTextureBlendMode(sprite_map[WALL], SDL_BLENDMODE_BLEND);
         SDL_SetTextureBlendMode(sprite_map[EMPTY_BOX], SDL_BLENDMODE_BLEND);
         SDL_SetTextureBlendMode(sprite_map[PROTAGONIST], SDL_BLENDMODE_BLEND);
-        for (const Entity &e : entities) {
+        for (const Entity &e : enemies) {
             SDL_SetTextureBlendMode(sprite_map[e.type], SDL_BLENDMODE_BLEND);
         }
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -17,7 +17,7 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
             SDL_SetTextureAlphaMod(sprite_map[WALL], i);
             SDL_SetTextureAlphaMod(sprite_map[EMPTY_BOX], i);
             SDL_SetTextureAlphaMod(sprite_map[PROTAGONIST], i);
-            for (const Entity &e : entities) {
+            for (const Entity &e : enemies) {
                 SDL_SetTextureAlphaMod(sprite_map[e.type], i);
             }
             base_render();
@@ -25,17 +25,16 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
         SDL_SetTextureAlphaMod(sprite_map[WALL], 255);
         SDL_SetTextureAlphaMod(sprite_map[EMPTY_BOX], 255);
         SDL_SetTextureAlphaMod(sprite_map[PROTAGONIST], 255);
-        for (const Entity &e : entities) {
+        for (const Entity &e : enemies) {
             SDL_SetTextureAlphaMod(sprite_map[e.type], 255);
         }
         return;
     }
-    const double slide_tick = 500 / (60 * t);
     for (double i = 0; i < 500; i += slide_tick) {
-        shifted_render(new_room, new_room_entities, i, direction);
+        shifted_render(new_room, new_room_enemies, i, direction);
     }
     room = new_room;
-    entities = new_room_entities;
+    enemies = new_room_enemies;
 }
 
 void General_handler::base_render() noexcept {
@@ -48,16 +47,24 @@ void General_handler::base_render() noexcept {
             SDL_RenderCopy(renderer, sprite_map[room[i][j] ? WALL : EMPTY_BOX], nullptr, &map_crop);
         }
     }
+    SDL_SetTextureColorMod(sprite_map[PROTAGONIST], 255, 255 * (1 - protagonist.hit_tick / 60.0), 255 * (1 - protagonist.hit_tick / 60.0));
     protagonist.render(renderer, sprite_map[PROTAGONIST]);
-    for (const Entity &e : entities) {
+    for (const Enemy &e: enemies) {
+        SDL_SetTextureColorMod(sprite_map[e.type], 255, 255  * (1 - e.hit_tick / 60.0), 255  * (1 - e.hit_tick / 60.0));
         e.render(renderer, sprite_map[e.type]);
     }
-    SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - lastTick), 0.0));
+    for (const Entity &e: protagonist_shots) {
+        e.render(renderer, sprite_map[e.type]);
+    }
+    for (const Entity &e: enemy_shots) {
+        e.render(renderer, sprite_map[e.type]);
+    }
+    SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
     SDL_RenderPresent(renderer);
-    lastTick = SDL_GetTicks();
+    framerate_last_tick = SDL_GetTicks();
 }
 
-void General_handler::shifted_render(const vector<vector<bool>> &new_room, const vector<Entity> &new_room_entities, const int shift, const Slide_direction direction) noexcept {
+void General_handler::shifted_render(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, const int shift, const Slide_direction direction) noexcept {
     SDL_RenderClear(renderer);
     static auto map_crop = SDL_Rect(0, 0, 50, 50);
     static int new_map_crop[2];
@@ -102,19 +109,19 @@ void General_handler::shifted_render(const vector<vector<bool>> &new_room, const
     protagonist_copy.position[0] += tick[0];
     protagonist_copy.position[1] += tick[1];
     protagonist_copy.render(renderer, sprite_map[PROTAGONIST]);
-    for (Entity e : entities) {
+    for (Entity e : enemies) {
         e.position[0] += tick[0];
         e.position[1] += tick[1];
         e.render(renderer, sprite_map[e.type]);
     }
-    for (Entity e : new_room_entities) {
+    for (Entity e : new_room_enemies) {
         e.position[0] += tick[0];
         e.position[1] += tick[1];
         e.render(renderer, sprite_map[e.type]);
     }
-    SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - lastTick), 0.0));
+    SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
     SDL_RenderPresent(renderer);
-    lastTick = SDL_GetTicks();
+    framerate_last_tick = SDL_GetTicks();
 }
 
 bool General_handler::poll_events_and_update_positions() noexcept {
@@ -135,16 +142,16 @@ bool General_handler::poll_events_and_update_positions() noexcept {
     }
     const Uint8 *keyboard_status = SDL_GetKeyboardState(nullptr);
     if (keyboard_status[SDL_SCANCODE_W]) {
-        protagonist.velocity[1] = -MAX_PROTAGONIST_SPEED;
+        protagonist.velocity[1] = -PROTAGONIST_SPEED;
     }
     if (keyboard_status[SDL_SCANCODE_S]) {
-        protagonist.velocity[1] = MAX_PROTAGONIST_SPEED;
+        protagonist.velocity[1] = PROTAGONIST_SPEED;
     }
     if (keyboard_status[SDL_SCANCODE_D]) {
-        protagonist.velocity[0] = MAX_PROTAGONIST_SPEED;
+        protagonist.velocity[0] = PROTAGONIST_SPEED;
     }
     if (keyboard_status[SDL_SCANCODE_A]) {
-        protagonist.velocity[0] = -MAX_PROTAGONIST_SPEED;
+        protagonist.velocity[0] = -PROTAGONIST_SPEED;
     }
     if (keyboard_status[SDL_SCANCODE_LEFT]) {
         shoot = LEFT;
@@ -158,22 +165,233 @@ bool General_handler::poll_events_and_update_positions() noexcept {
     if (keyboard_status[SDL_SCANCODE_DOWN]) {
         shoot = DOWN;
     }
-    if (swing) {
+    if (protagonist.action_tick) {
+        --protagonist.action_tick;
+    } else if (swing) {
+        protagonist.action_tick = 12;
         cout << "swing!\n";
-    } else if (shoot != NONE) {
-        cout << "shoot!\n";
+    } else {
+        protagonist.action_tick = 12;
+        if (shoot != NONE) {
+            protagonist_shots.emplace_back(protagonist.position, 3, 0, ++id_counter, PROTAGONIST_SHOT);
+        }
+        switch (shoot) {
+            case UP:
+                protagonist_shots.rbegin()->velocity[0] = 0;
+                protagonist_shots.rbegin()->velocity[1] = -10;
+                break;
+            case DOWN:
+                protagonist_shots.rbegin()->velocity[0] = 0;
+                protagonist_shots.rbegin()->velocity[1] = 10;
+                break;
+            case RIGHT:
+                protagonist_shots.rbegin()->velocity[0] = 10;
+                protagonist_shots.rbegin()->velocity[1] = 0;
+                break;
+            case LEFT:
+                protagonist_shots.rbegin()->velocity[0] = -10;
+                protagonist_shots.rbegin()->velocity[1] = 0;
+                break;
+            case NONE:
+                protagonist.action_tick -= 12;
+        }
     }
+
+    //protagonist movement
+    map<int, vector<int>> previous_positions{{protagonist.id, vector<int>{protagonist.position[0], protagonist.position[1]}}};
+    avoid_wall_collision(protagonist);
     protagonist.position[0] += protagonist.velocity[0];
     protagonist.position[1] += protagonist.velocity[1];
-    protagonist.velocity[0] = protagonist.velocity[1] = 0;
-    //check collision
-    for (int i = 0; i < entities.size(); ++i) {
-        if (entities[i].hp <= 0) {
-            entities.erase(next(entities.begin(), i));
+
+    //enemy movement
+    for (Enemy &e: enemies) {
+        if (e.hit_tick != 0) {
+            --e.hit_tick;
+        }
+        previous_positions[e.id] = vector<int>(e.position);
+        vector<double> protagonist_direction{static_cast<double>(protagonist.position[0] - e.position[0]), static_cast<double>(protagonist.position[1] - e.position[1])};
+        double norm = sqrt(protagonist_direction[0] * protagonist_direction[0] + protagonist_direction[1] * protagonist_direction[1]);
+        if (norm != 0) {
+            protagonist_direction[0] /= norm;
+            protagonist_direction[1] /= norm;
+        } else {
+            protagonist_direction[0] = protagonist_direction[1] = 0;
+        }
+        switch (e.type) {
+            case KARATEKA:
+                if (karateka_kick_animation[e.id] == 0) {
+                    if (uniform_real(rng) < e.special_action_probability) {
+                        cout << "kick!\n";
+                        karateka_kick_animation[e.id] = 1;
+                    } else {
+                        e.velocity[0] = static_cast<int>(protagonist_direction[0] * e.movement_average + e.movement_control * gauss(rng));
+                        e.velocity[1] = static_cast<int>(protagonist_direction[1] * e.movement_average + e.movement_control * gauss(rng));
+                    }
+                    avoid_wall_collision(e);
+                    e.position[0] += e.velocity[0];
+                    e.position[1] += e.velocity[1];
+                } else {
+                    if (++karateka_kick_animation[e.id] > 30) {
+                        if (avoid_wall_collision(e)) {
+                            karateka_kick_animation[e.id] = 0;
+                        }
+                        e.position[0] += e.velocity[0];
+                        e.position[1] += e.velocity[1];
+                    } else if (karateka_kick_animation[e.id] == 20) {
+                        e.velocity[0] = static_cast<int>(protagonist_direction[0] * 10);
+                        e.velocity[1] = static_cast<int>(protagonist_direction[1] * 10);
+                    }
+                }
+                break;
+            case CLOWN:
+                if (uniform_real(rng) < e.movement_control) {
+                    e.velocity[0] = static_cast<int>(gauss(rng)) + (2 * coin_flip(rng) - 1) * e.movement_average;
+                    e.velocity[1] = static_cast<int>(gauss(rng)) + (2 * coin_flip(rng) - 1) * e.movement_average;
+                }
+                avoid_wall_collision(e);
+                e.position[0] += e.velocity[0];
+                e.position[1] += e.velocity[1];
+                break;
+            default:
+                break;
+        }
+    }
+    for (int i = 0; i < enemy_shots.size(); ++i) {
+        previous_positions[enemy_shots[i].id] = vector<int>(enemy_shots[i].position);
+        if (avoid_wall_collision(enemy_shots[i])) {
+            enemy_shots.erase(next(enemy_shots.begin(), i));
+            --i;
+        } else {
+            enemy_shots[i].position[0] += enemy_shots[i].velocity[0];
+            enemy_shots[i].position[1] += enemy_shots[i].velocity[1];
+        }
+    }
+    for (int i = 0; i < protagonist_shots.size(); ++i) {
+        previous_positions[protagonist_shots[i].id] = vector<int>(protagonist_shots[i].position);
+        if (avoid_wall_collision(protagonist_shots[i])) {
+            protagonist_shots.erase(next(protagonist_shots.begin(), i));
+            --i;
+        } else {
+            protagonist_shots[i].position[0] += protagonist_shots[i].velocity[0];
+            protagonist_shots[i].position[1] += protagonist_shots[i].velocity[1];
+        }
+    }
+    for (int i = 0; i < enemies.size(); ++i) {
+        if (enemies[i].hp <= 0) {
+            enemies.erase(next(enemies.begin(), i));
             --i;
         }
     }
+    if (protagonist.hit_tick) {
+        --protagonist.hit_tick;
+    } else {
+        for (const Enemy &e: enemies) {
+            if (collide(previous_positions, protagonist, e)) {
+                cout << "Check!\n";
+                protagonist.hit_tick = 60;
+                protagonist.hp -= 5;
+                break;
+            }
+        }
+        if (!protagonist.hit_tick) {
+            for (int i = 0; i < enemy_shots.size(); ++i) {
+                if (collide(previous_positions, enemy_shots[i], protagonist)) {
+                    enemy_shots.erase(next(enemy_shots.begin(), i));
+                    --i;
+                }
+            }
+        }
+    }
+    for (Enemy &e: enemies) {
+        for (int i = 0; i < protagonist_shots.size(); ++i) {
+            if (collide(previous_positions, protagonist_shots[i], e)) {
+                protagonist_shots.erase(next(protagonist_shots.begin(), i));
+                e.hp -= 5;
+                e.hit_tick = 30;
+                break;
+            }
+        }
+    }
+    if (protagonist.action_tick) {
+        --protagonist.action_tick;
+    }
+    protagonist.velocity[0] = protagonist.velocity[1] = 0;
+    if (protagonist.hp <= 0) {
+        cout << "GAME OVER";
+        return false;
+    }
     return true;
+}
+
+bool General_handler::collide(const map<int, vector<int>> &previous_positions, const Entity &entity1, const Entity &entity2) {
+    vector<double> distances(4);
+    distances[0] = point_point_distance(entity1.position, entity2.position);
+    distances[1] = point_point_distance(entity1.position, previous_positions.at(entity2.id));
+    distances[2] = point_point_distance(previous_positions.at(entity1.id), entity2.position);
+    distances[3] = point_point_distance(previous_positions.at(entity1.id), previous_positions.at(entity2.id));
+    return (*min_element(distances.begin(), distances.end())) < (entity1.radius + entity2.radius);
+}
+
+bool General_handler::avoid_wall_collision(Entity &entity) {
+    bool collision = false;
+    vector<int> position_cell{entity.position[0] / 50, entity.position[1] / 50};
+    if (position_cell[0] < 0 || position_cell[0] > 9 || position_cell[1] < 0 || position_cell[1] > 9) {
+        entity.velocity[0] = 0;
+        entity.velocity[1] = 0;
+        return true;
+    }
+    if (entity.position[0] % 50 <= entity.radius &&
+        ((position_cell[0] > 0 && room[position_cell[0] - 1][position_cell[1]]) ||
+         (position_cell[0] == 0))) {
+        if (entity.velocity[0] < 0) {
+            collision = true;
+            entity.velocity[0] = 0;
+        }
+    }
+    if (entity.position[0] % 50 >= 50 - entity.radius &&
+        ((position_cell[0] < 9 && room[position_cell[0] + 1][position_cell[1]]) ||
+         (position_cell[0] == 9))) {
+        if (entity.velocity[0] > 0) {
+            collision = true;
+            entity.velocity[0] = 0;
+        }
+    }
+    if (entity.position[1] % 50 <= entity.radius &&
+        ((position_cell[1] > 0 && room[position_cell[0]][position_cell[1] - 1]) ||
+         (position_cell[1] == 0))) {
+        if (entity.velocity[1] < 0) {
+            collision = true;
+            entity.velocity[1] = 0;
+        }
+    }
+    if (entity.position[1] % 50 >= 50 - entity.radius &&
+        ((position_cell[1] < 9 && room[position_cell[0]][position_cell[1] + 1]) ||
+         (position_cell[1] == 9))) {
+        if (entity.velocity[1] > 0) {
+            collision = true;
+            entity.velocity[1] = 0;
+        }
+    }
+    return collision;
+}
+
+double line_point_distance(int *line, const vector<int> &point) {
+    return abs(line[0] * point[0] + line[1] * point[1] + line[2]) / sqrt(point[0] * point[0] + point[1] * point[1]);
+}
+
+vector<double> line_line_intersection(int *line1, int *line2) {
+    int cramer_det = line1[0] * line2[1] - line1[1] * line2[0];
+    if (cramer_det == 0) {
+        return vector<double>{-1, -1};
+    }
+    return vector<double>{
+            static_cast<double>(line2[1] * line1[2] - line2[2] * line1[1]) / cramer_det,
+            static_cast<double>(line2[2] * line1[0] - line2[0] * line1[2]) / cramer_det
+    };
+}
+
+double point_point_distance(const vector<int> &p1, const vector<int> &p2) {
+    return sqrt((p1[0] - p2[0]) * (p1[0] - p2[0]) + (p1[1] - p2[1]) * (p1[1] - p2[1]));
 }
 
 void Entity::render(SDL_Renderer *renderer, SDL_Texture *texture) const noexcept {
