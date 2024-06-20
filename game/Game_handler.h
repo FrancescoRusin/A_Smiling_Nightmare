@@ -6,10 +6,15 @@
 
 class Game_handler {
     General_handler handler{};
+    mt19937_64 rng;
 public:
-    Game_handler() = default;
+    Game_handler() {
+        rng = mt19937_64(duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count());
+    }
 
     void game();
+
+    vector<int> build_floor();
 
     vector<vector<bool>> build_room(const vector<Direction> &directions);
 

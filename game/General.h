@@ -26,6 +26,7 @@ struct Entity {
     int8_t hit_tick{};
     int8_t action_tick{};
     Sprite_type type;
+    int current_sprite;
 
     Entity() : type(EMPTY_BOX) {};
 
@@ -40,6 +41,7 @@ struct Entity {
         this->id = id;
         this->hit_tick = this->action_tick = 0;
         this->type = type;
+        this->current_sprite = 0;
     }
 
     Entity& operator=(const Entity &entity) {
@@ -53,6 +55,7 @@ struct Entity {
         this->hit_tick = entity.hit_tick;
         this->action_tick = entity.action_tick;
         this->type = entity.type;
+        this->current_sprite = entity.current_sprite;
         return *this;
     }
 
@@ -77,7 +80,7 @@ struct Game_stats {
     int karateka_kick_delay;
     double karateka_kick_probability;
     double clown_shoot_probability;
-    int clown_shoot_speed;
+    int clown_shot_speed;
     double clown_shot_precision;
 };
 
@@ -85,13 +88,16 @@ class General_handler {
     SDL_Window *window{};
     SDL_Renderer *renderer{};
     vector<vector<bool>> room;
-    map<Sprite_type, SDL_Texture *> sprite_map{};
+    map<Sprite_type, vector<SDL_Texture *>> sprite_map{};
+    map<int, SDL_Texture *> current_sprites{};
+    map<int, int> sprite_clock{};
     map<int, int> karateka_kick_animation{};
     vector<Entity> enemy_shots{};
     vector<Entity> protagonist_shots{};
     int protagonist_swing{};
     vector<int> protagonist_swing_direction{};
     SDL_Texture *swing_texture{};
+    SDL_Texture *trapdoor_texture{};
 
     mt19937_64 rng;
     normal_distribution<double> gauss = normal_distribution<double>();
@@ -117,8 +123,10 @@ public:
     ~General_handler() {
         SDL_DestroyWindow(window);
         SDL_DestroyRenderer(renderer);
-        for (const auto &[type, texture] : sprite_map) {
-            SDL_DestroyTexture(texture);
+        for (const auto &[type, texture_list] : sprite_map) {
+            for (SDL_Texture *texture : texture_list) {
+                SDL_DestroyTexture(texture);
+            }
         }
     }
 
