@@ -24,7 +24,7 @@ void General_handler::initialize(bool final_room) {
     explosion_texture = IMG_LoadTexture(renderer, R"(.\sprites\Explosion.png)");
     karateka_kick_sound = Mix_LoadWAV(R"(.\sounds\Karateka_kick_sound.wav)");
     clown_charge_sound = Mix_LoadWAV(R"(.\sounds\Clown_charge_sound.wav)");
-    explosion_sound = Mix_LoadWAV(R"(.\sounds\Clown_explosion_sound.wav)");
+    clown_explosion_sound = Mix_LoadWAV(R"(.\sounds\Clown_explosion_sound.wav)");
     background_music = Mix_LoadMUS(R"(.\sounds\Background_music.wav)");
     //font = TTF_OpenFont("IsaacGame", 30);
     protagonist = Entity(vector<int>{400, 400}, 25, 30, 0, PROTAGONIST);
@@ -420,11 +420,12 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                         e.position[1] += e.velocity[1];
                         if (collide(previous_positions, e, protagonist)) {
                             clown_explosion[e.id] = 45;
-                            Mix_PlayChannel(-1, explosion_sound, 0);
+                            Mix_PlayChannel(-1, clown_explosion_sound, 0);
                             protagonist.hp -= 8;
                             protagonist.hit_tick = 60;
                         } else if (clown_charge[e.id] == 1) {
                             clown_explosion[e.id] = 45;
+                            Mix_PlayChannel(-1, clown_explosion_sound, 0);
                         }
                     } else {
                         if (sprite_clock[e.id] != 0) {

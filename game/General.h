@@ -120,7 +120,7 @@ class General_handler {
     SDL_Texture *explosion_texture{};
     Mix_Chunk *karateka_kick_sound{};
     Mix_Chunk *clown_charge_sound{};
-    Mix_Chunk *explosion_sound{};
+    Mix_Chunk *clown_explosion_sound{};
 
     //TTF_Font *font;
 
@@ -156,7 +156,7 @@ public:
             }
         }
         Mix_FreeMusic(background_music);
-        Mix_FreeChunk(explosion_sound);
+        Mix_FreeChunk(clown_explosion_sound);
         Mix_FreeChunk(clown_charge_sound);
         Mix_FreeChunk(karateka_kick_sound);
     }
