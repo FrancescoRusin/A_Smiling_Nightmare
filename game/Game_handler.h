@@ -16,5 +16,6 @@ public:
     vector<Enemy> build_enemies();
 };
 
+vector<int> find_neighbors(int r);
 
 #endif //SS_GAME_GAME_HANDLER_H

@@ -1,28 +1,89 @@
 #include "Game_handler.h"
 
+vector<int> find_neighbors(int r) {
+    vector<int> neighbors{};
+    if (r > 8) {
+        neighbors.push_back(r - 8);
+    }
+    if (r < 56) {
+        neighbors.push_back(r + 8);
+    }
+    if (r % 8 != 0) {
+        neighbors.push_back(r - 1);
+    }
+    if (r % 8 != 7) {
+        neighbors.push_back(r + 1);
+    }
+    return neighbors;
+}
+
 void Game_handler::game() {
     mt19937_64 rng = mt19937_64(duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count());
     uniform_int_distribution<int> uniform4 = uniform_int_distribution<int>(0, 4);
-    vector<Direction> all_directions{UP, DOWN, LEFT, RIGHT};
+    uniform_real_distribution<double> uniform_unit = uniform_real_distribution<double>();
     handler.initialize();
-    vector<vector<vector<Direction>>> floor(3, vector<vector<Direction>>(3, vector<Direction>(0)));
-    vector<vector<bool>> reachable(3, vector<bool>(3));
-    floor[0][0] = vector<Direction>{UP, RIGHT};
-    for (int i = 0; i < 3; ++i) {
-        for (int j = 0; j < 3; ++j) {
-            vector<Direction>
+    vector<int> queue(1, 36);
+    vector<int> reachable(1, 36);
+    while(reachable.size() < 8) {
+        vector<int> queue_copy(queue);
+        for (const int &r: queue_copy) {
+            for (const int &n: find_neighbors(r)) {
+                if (find(reachable.begin(), reachable.end(), n) == reachable.end()) {
+                    vector<int> neighbor_neighbors = find_neighbors(n);
+                    if (uniform_unit(rng) < .5 && reachable.size() < 8 &&
+                    count_if(reachable.begin(), reachable.end(), [&](int nn) {
+                        return find(neighbor_neighbors.begin(), neighbor_neighbors.end(), nn) != neighbor_neighbors.end();
+                    }) < 3) {
+                        reachable.push_back(n);
+                        queue.push_back(n);
+                    }
+                }
+            }
         }
     }
-    vector<vector<bool>> room = build_room(vector<Direction>());
+    vector<Direction> directions{};
+    if (find(reachable.begin(), reachable.end(), 26) != reachable.end()) {
+        directions.push_back(DOWN);
+    }
+    if (find(reachable.begin(), reachable.end(), 35) != reachable.end()) {
+        directions.push_back(LEFT);
+    }
+    if (find(reachable.begin(), reachable.end(), 37) != reachable.end()) {
+        directions.push_back(RIGHT);
+    }
+    if (find(reachable.begin(), reachable.end(), 46) != reachable.end()) {
+        directions.push_back(UP);
+    }
+    vector<vector<bool>> room = build_room(directions);
     vector<Enemy> enemies = build_enemies();
     handler.room_change_animation(room, enemies, NONE);
     bool keep_open = true;
     while (keep_open) {
-        while (keep_open && !handler.enemies.empty()) {
+        while (handler.protagonist.hp > 0 && (!handler.enemies.empty() ||
+                (abs(handler.protagonist.position[0] - 400) < 300 && abs(handler.protagonist.position[1] - 400) < 300))) {
             handler.base_render();
             keep_open = handler.poll_events_and_update_positions();
         }
-        handler.room_change_animation(build_room(vector<Direction>()), build_enemies(), UP);
+        if (handler.protagonist.hp < 0) {
+            handler.room_change_animation(vector<vector<bool>>(0), vector<Enemy>{}, NONE);
+            keep_open = false;
+        } else {
+            Direction direction = NONE;
+            if (handler.protagonist.position[0] > 700) {
+                handler.protagonist.position[0] = 800 - handler.protagonist.position[0];
+                direction = RIGHT;
+            } else if (handler.protagonist.position[0] < 100) {
+                handler.protagonist.position[0] = 800 - handler.protagonist.position[0];
+                direction = LEFT;
+            } else if (handler.protagonist.position[1] > 700) {
+                handler.protagonist.position[1] = 800 - handler.protagonist.position[1];
+                direction = DOWN;
+            } else if (handler.protagonist.position[1] < 100) {
+                handler.protagonist.position[1] = 800 - handler.protagonist.position[1];
+                direction = UP;
+            }
+            handler.room_change_animation(build_room(vector<Direction>()), build_enemies(), direction);
+        }
     }
 }
 

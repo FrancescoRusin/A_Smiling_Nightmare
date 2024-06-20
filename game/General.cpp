@@ -15,10 +15,9 @@ void General_handler::initialize() {
     swing_texture = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Swing.png)");
     protagonist = Entity(vector<int>{400, 400}, 35, 35, 0, PROTAGONIST);
     enemies = {};
-    game_stats = Game_stats(20, 30, 1.0 / 120, 1.0 / 30, 20);}
+    game_stats = Game_stats(20, 30, 1.0 / 120, 1.0 / 30, 20, 1);}
 
 void General_handler::room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Direction direction) {
-    assert(new_room.size() == 10 && all_of(new_room.begin(), new_room.end(), [](const vector<bool> &v) { return v.size() == 10; }));
     constexpr double alpha_tick = 1.5;
     constexpr double slide_tick = 3;
     if (room.empty()) {
@@ -48,8 +47,35 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
         }
         return;
     }
+    if (new_room.empty()) {
+        protagonist_shots = vector<Entity>{};
+        enemy_shots = vector<Entity>{};
+        SDL_SetTextureBlendMode(sprite_map[WALL], SDL_BLENDMODE_BLEND);
+        SDL_SetTextureBlendMode(sprite_map[EMPTY_BOX], SDL_BLENDMODE_BLEND);
+        SDL_SetTextureBlendMode(sprite_map[PROTAGONIST], SDL_BLENDMODE_BLEND);
+        for (const Entity &e : enemies) {
+            SDL_SetTextureBlendMode(sprite_map[e.type], SDL_BLENDMODE_BLEND);
+        }
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        for (double i = 255; i >= 0; i -= alpha_tick) {
+            SDL_SetTextureAlphaMod(sprite_map[WALL], i);
+            SDL_SetTextureAlphaMod(sprite_map[EMPTY_BOX], i);
+            SDL_SetTextureAlphaMod(sprite_map[PROTAGONIST], i);
+            for (const Entity &e : enemies) {
+                SDL_SetTextureAlphaMod(sprite_map[e.type], i);
+            }
+            base_render();
+        }
+        SDL_SetTextureAlphaMod(sprite_map[WALL], 255);
+        SDL_SetTextureAlphaMod(sprite_map[EMPTY_BOX], 255);
+        SDL_SetTextureAlphaMod(sprite_map[PROTAGONIST], 255);
+        for (const Entity &e : enemies) {
+            SDL_SetTextureAlphaMod(sprite_map[e.type], 255);
+        }
+        return;
+    }
     for (double i = 0; i < 800; i += slide_tick) {
-        shifted_render(new_room, new_room_enemies, i, direction);
+        shifted_render(new_room, i, direction);
     }
     room = new_room;
     enemies = new_room_enemies;
@@ -89,7 +115,7 @@ void General_handler::base_render() noexcept {
     framerate_last_tick = SDL_GetTicks();
 }
 
-void General_handler::shifted_render(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, const int shift, const Direction direction) noexcept {
+void General_handler::shifted_render(const vector<vector<bool>> &new_room, const int shift, const Direction direction) noexcept {
     SDL_RenderClear(renderer);
     static auto map_crop = SDL_Rect(0, 0, 80, 80);
     static int new_map_crop[2];
@@ -131,19 +157,9 @@ void General_handler::shifted_render(const vector<vector<bool>> &new_room, const
         }
     }
     Entity protagonist_copy = Entity(protagonist);
-    protagonist_copy.position[0] += tick[0];
-    protagonist_copy.position[1] += tick[1];
+    protagonist_copy.position[0] += new_map_crop[0] + tick[0];
+    protagonist_copy.position[1] += new_map_crop[1] + tick[1];
     protagonist_copy.render(renderer, sprite_map[PROTAGONIST]);
-    for (Entity e : enemies) {
-        e.position[0] += tick[0];
-        e.position[1] += tick[1];
-        e.render(renderer, sprite_map[e.type]);
-    }
-    for (Entity e : new_room_enemies) {
-        e.position[0] += tick[0];
-        e.position[1] += tick[1];
-        e.render(renderer, sprite_map[e.type]);
-    }
     SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
     SDL_RenderPresent(renderer);
     framerate_last_tick = SDL_GetTicks();
@@ -298,8 +314,8 @@ bool General_handler::poll_events_and_update_positions() noexcept {
             case CLOWN:
                 if (uniform_real(rng) < game_stats.clown_shoot_probability) {
                     enemy_shots.emplace_back(e.position, 10, 0, ++id_counter, ENEMY_SHOT);
-                    enemy_shots.rbegin()->velocity[0] = static_cast<int>(protagonist_direction[0] * game_stats.clown_shoot_speed);
-                    enemy_shots.rbegin()->velocity[1] = static_cast<int>(protagonist_direction[1] * game_stats.clown_shoot_speed);
+                    enemy_shots.rbegin()->velocity[0] = static_cast<int>(protagonist_direction[0] * game_stats.clown_shoot_speed + game_stats.clown_shot_precision * gauss(rng));
+                    enemy_shots.rbegin()->velocity[1] = static_cast<int>(protagonist_direction[1] * game_stats.clown_shoot_speed + game_stats.clown_shot_precision * gauss(rng));
                 }
                 else if (uniform_real(rng) < e.movement_control) {
                     e.velocity[0] = static_cast<int>(gauss(rng)) + (2 * coin_flip(rng) - 1) * e.movement_average;

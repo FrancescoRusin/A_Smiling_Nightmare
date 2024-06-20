@@ -78,6 +78,7 @@ struct Game_stats {
     double karateka_kick_probability;
     double clown_shoot_probability;
     int clown_shoot_speed;
+    double clown_shot_precision;
 };
 
 class General_handler {
@@ -86,7 +87,6 @@ class General_handler {
     vector<vector<bool>> room;
     map<Sprite_type, SDL_Texture *> sprite_map{};
     map<int, int> karateka_kick_animation{};
-    Entity protagonist;
     vector<Entity> enemy_shots{};
     vector<Entity> protagonist_shots{};
     int protagonist_swing{};
@@ -102,13 +102,14 @@ class General_handler {
 
     Game_stats game_stats{};
 
-    void shifted_render(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, int shift, Direction direction) noexcept;
+    void shifted_render(const vector<vector<bool>> &new_room, int shift, Direction direction) noexcept;
 
     bool avoid_wall_collision(Entity &entity);
 
     bool collide(const map<int, vector<int>> &previous_positions, const Entity &entity1, const Entity &entity2);
 public:
     int id_counter = 0;
+    Entity protagonist;
     vector<Enemy> enemies{};
     General_handler() = default;
 
