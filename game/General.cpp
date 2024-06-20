@@ -5,7 +5,6 @@ void General_handler::initialize(bool final_room) {
     SDL_Init(SDL_INIT_VIDEO);
     IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
     Mix_Init(0);
-    TTF_Init();
     Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024);
     SDL_CreateWindowAndRenderer(800, 800, 0, &window, &renderer);
     sprite_map[WALL].push_back(IMG_LoadTexture(renderer, R"(.\sprites\Brick_wall.jpg)"));

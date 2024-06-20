@@ -153,7 +153,7 @@ vector<int> Game_handler::build_floor() {
 
 vector<Enemy> Game_handler::build_enemies(const vector<vector<bool>> &room) {
     uniform_int_distribution<int> uniform800 = uniform_int_distribution<int>(0, 799);
-    const int n_of_enemies = min(average_num_of_enemies + static_cast<int>(round(normal_distribution<double>()(rng))), 5);
+    const int n_of_enemies = average_num_of_enemies + static_cast<int>(round(normal_distribution<double>()(rng)));
     vector<Enemy> enemies(0);
     vector<int> position(2);
     for (int i = 0; i < n_of_enemies; ++i) {
