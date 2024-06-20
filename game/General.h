@@ -5,8 +5,6 @@
 
 #ifndef SS_GAME_MAP_H
 
-#define PROTAGONIST_SPEED 8;
-
 using namespace std;
 
 enum Direction {
@@ -75,12 +73,30 @@ struct Enemy : public Entity {
     }
 };
 
+struct Floor_data {
+    int protagonist_shots_fired{};
+    int protagonist_shots_hit{};
+    int protagonist_swings{};
+    int protagonist_swings_hit{};
+    int enemy_shots_fired{};
+    int enemy_shots_hit{};
+    int enemy_contact_hits{};
+
+    void reset() {
+        protagonist_shots_fired = 0;
+        protagonist_shots_hit = 0;
+        protagonist_swings = 0;
+        protagonist_swings_hit = 0;
+        enemy_shots_fired = 0;
+        enemy_shots_hit = 0;
+        enemy_contact_hits = 0;
+    }
+};
+
 struct Game_stats {
-    int karateka_kick_speed;
-    int karateka_kick_delay;
-    double karateka_kick_probability;
+    int karateka_average_speed;
     double clown_shoot_probability;
-    int clown_shot_speed;
+    double clown_shot_speed;
     double clown_shot_precision;
 };
 
@@ -89,7 +105,6 @@ class General_handler {
     SDL_Renderer *renderer{};
     vector<vector<bool>> room;
     map<Sprite_type, vector<SDL_Texture *>> sprite_map{};
-    map<int, SDL_Texture *> current_sprites{};
     map<int, int> sprite_clock{};
     map<int, int> karateka_kick_animation{};
     vector<Entity> enemy_shots{};
@@ -107,8 +122,6 @@ class General_handler {
     Uint32 framerate_last_tick = 0;
     bool pause = false;
 
-    Game_stats game_stats{};
-
     void shifted_render(const vector<vector<bool>> &new_room, int shift, Direction direction) noexcept;
 
     bool avoid_wall_collision(Entity &entity);
@@ -118,7 +131,9 @@ public:
     int id_counter = 0;
     Entity protagonist;
     vector<Enemy> enemies{};
-    bool final_room;
+    bool final_room{};
+    Game_stats game_stats{};
+    Floor_data floor_data;
     General_handler() = default;
 
     ~General_handler() {

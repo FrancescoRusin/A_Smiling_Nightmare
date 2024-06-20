@@ -8,6 +8,9 @@ class Game_handler {
     mt19937_64 rng;
     int average_num_of_enemies = 4;
     double karateka_probability = .5;
+    ofstream file;
+
+    uniform_real_distribution<double> uniform_unit = uniform_real_distribution<double>();
 public:
     Game_handler() {
         rng = mt19937_64(duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count());
@@ -20,6 +23,8 @@ public:
     vector<vector<bool>> build_room(const vector<Direction> &directions);
 
     vector<Enemy> build_enemies(const vector<vector<bool>> &room);
+
+    void adapt();
 };
 
 vector<int> find_neighbors(int r);

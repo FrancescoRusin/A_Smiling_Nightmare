@@ -20,19 +20,15 @@ vector<int> find_neighbors(int r) {
 vector<Direction> find_closed_directions(const vector<int> &floor, int room_number) {
     vector<Direction> directions(0);
     if (find(floor.begin(), floor.end(), room_number - 8) == floor.end()) {
-        cout << "UP\n";
         directions.push_back(UP);
     }
     if (room_number % 8 == 0 || find(floor.begin(), floor.end(), room_number - 1) == floor.end()) {
-        cout << "LEFT\n";
         directions.push_back(LEFT);
     }
     if (room_number % 8 == 7 || find(floor.begin(), floor.end(), room_number + 1) == floor.end()) {
-        cout << "RIGHT\n";
         directions.push_back(RIGHT);
     }
     if (find(floor.begin(), floor.end(), room_number + 8) == floor.end()) {
-        cout << "DOWN\n";
         directions.push_back(DOWN);
     }
     return directions;
@@ -44,44 +40,52 @@ void Game_handler::game() {
     int room_number = 36;
     vector<int> floor = build_floor();
     map<int, bool> cleared{};
+    map<int, vector<vector<bool>>> rooms{};
+    for (int r: floor) {
+        rooms[r] = build_room(find_closed_directions(floor, r));
+    }
     int final_room_number = floor[final_room_extractor(rng)];
     while (final_room_number == 28 || final_room_number == 35 || final_room_number == 36 || final_room_number == 37 || final_room_number == 44) {
         final_room_number = floor[final_room_extractor(rng)];
     }
-    vector<Direction> directions = find_closed_directions(floor, 36);
-    vector<vector<bool>> room = build_room(directions);
-    vector<Enemy> enemies = build_enemies(room);
-    handler.room_change_animation(room, enemies, NONE);
+    vector<Enemy> enemies = build_enemies(rooms[36]);
+    handler.room_change_animation(rooms[36], enemies, NONE);
     bool keep_open = true;
-    for (int i = 0; i < 8; ++i) {
-        printf("%d ", floor[i]);
-    }
-    cout << "\n";
     while (keep_open) {
-        while (handler.protagonist.hp > 0 && (!handler.enemies.empty() ||
-                                              (abs(handler.protagonist.position[0] - 400) < 350 && abs(handler.protagonist.position[1] - 400) < 350)) &&
+        // base loop
+        while (keep_open && (!handler.enemies.empty() ||
+                             (abs(handler.protagonist.position[0] - 400) < 350 && abs(handler.protagonist.position[1] - 400) < 350)) &&
                (!handler.enemies.empty() || room_number != final_room_number ||
                 abs(handler.protagonist.position[0] - 400) > 25 || abs(handler.protagonist.position[1] - 400) > 25)) {
             handler.base_render();
             keep_open = handler.poll_events_and_update_positions();
         }
-        if (handler.protagonist.hp <= 0) {
+        // if player is dead or game was quitted
+        if (!keep_open) {
+            adapt();
             handler.room_change_animation(vector<vector<bool>>{}, vector<Enemy>{}, NONE);
-            keep_open = false;
         } else {
+            // if player took the trapdoor for the next floor
             if (handler.final_room && abs(handler.protagonist.position[0] - 400) < 25 && abs(handler.protagonist.position[1] - 400) < 25) {
                 handler.room_change_animation(vector<vector<bool>>{}, vector<Enemy>{}, NONE);
+                adapt();
+                handler.floor_data.reset();
+                handler.protagonist.hp = 30;
                 floor = build_floor();
+                cleared.clear();
+                rooms.clear();
+                for (int r: floor) {
+                    rooms[r] = build_room(find_closed_directions(floor, r));
+                }
                 final_room_number = floor[final_room_extractor(rng)];
                 while (final_room_number == 26 || final_room_number == 35 || final_room_number == 36 || final_room_number == 37 || final_room_number == 46) {
                     final_room_number = floor[final_room_extractor(rng)];
                 }
                 room_number = 36;
-                directions = find_closed_directions(floor, room_number);
-                room = build_room(directions);
                 handler.final_room = false;
-                handler.room_change_animation(room, build_enemies(room), NONE);
+                handler.room_change_animation(rooms[room_number], build_enemies(rooms[room_number]), NONE);
             } else {
+                // if player just changed room
                 cleared[room_number] = true;
                 Direction direction = NONE;
                 if (handler.protagonist.position[0] > 750) {
@@ -101,11 +105,11 @@ void Game_handler::game() {
                     direction = UP;
                     room_number -= 8;
                 }
+                if (!cleared[room_number]) {
+                    handler.protagonist.hp = min(30, handler.protagonist.hp + 10);
+                }
                 handler.final_room = (room_number == final_room_number);
-                directions = find_closed_directions(floor, room_number);
-                room = build_room(directions);
-                cout << room_number << "\n";
-                handler.room_change_animation(room, cleared[room_number] ? vector<Enemy>{} : build_enemies(room), direction);
+                handler.room_change_animation(rooms[room_number], cleared[room_number] ? vector<Enemy>{} : build_enemies(rooms[room_number]), direction);
             }
         }
     }
@@ -116,7 +120,7 @@ vector<int> Game_handler::build_floor() {
     uniform_real_distribution<double> uniform_unit = uniform_real_distribution<double>();
     vector<int> queue(1, 36);
     vector<int> reachable(1, 36);
-    while(reachable.size() < 8) {
+    while (reachable.size() < 8) {
         vector<int> queue_copy(queue);
         for (const int &r: queue_copy) {
             for (const int &n: find_neighbors(r)) {
@@ -134,13 +138,11 @@ vector<int> Game_handler::build_floor() {
         }
     }
     return reachable;
-
 }
 
 vector<Enemy> Game_handler::build_enemies(const vector<vector<bool>> &room) {
-    uniform_real_distribution<double> uniform_unit = uniform_real_distribution<double>();
     uniform_int_distribution<int> uniform800 = uniform_int_distribution<int>(0, 799);
-    const int n_of_enemies = min(average_num_of_enemies + static_cast<int>(round(normal_distribution<double>()(rng))), 6);
+    const int n_of_enemies = min(average_num_of_enemies + static_cast<int>(round(normal_distribution<double>()(rng))), 5);
     vector<Enemy> enemies(0);
     vector<int> position(2);
     for (int i = 0; i < n_of_enemies; ++i) {
@@ -152,36 +154,35 @@ vector<Enemy> Game_handler::build_enemies(const vector<vector<bool>> &room) {
             position[1] = uniform800(rng);
         }
         if (uniform_unit(rng) < karateka_probability) {
-            enemies.emplace_back(position, 25, 20, ++(handler.id_counter), KARATEKA, 7, 2);
+            enemies.emplace_back(position, 25, 20, ++(handler.id_counter), KARATEKA, handler.game_stats.karateka_average_speed, 2);
         } else {
-            enemies.emplace_back(position, 25, 20, ++(handler.id_counter), CLOWN, 0, .8);
+            enemies.emplace_back(position, 25, 10, ++(handler.id_counter), CLOWN, 0, .8);
         }
     }
     return enemies;
 }
 
-//TODO
 vector<vector<bool>> Game_handler::build_room(const vector<Direction> &directions) {
     vector<vector<bool>> room(16, vector<bool>(16));
     for (const Direction &direction: directions) {
         switch (direction) {
             case UP:
-                for (int i = 0; i < 16; ++i) {
+                for (int i = 1; i < 15; ++i) {
                     room[i][0] = true;
                 }
                 break;
             case DOWN:
-                for (int i = 0; i < 16; ++i) {
+                for (int i = 1; i < 15; ++i) {
                     room[i][15] = true;
                 }
                 break;
             case LEFT:
-                for (int i = 0; i < 16; ++i) {
+                for (int i = 1; i < 15; ++i) {
                     room[0][i] = true;
                 }
                 break;
             case RIGHT:
-                for (int i = 0; i < 16; ++i) {
+                for (int i = 1; i < 15; ++i) {
                     room[15][i] = true;
                 }
                 break;
@@ -189,5 +190,38 @@ vector<vector<bool>> Game_handler::build_room(const vector<Direction> &direction
                 break;
         }
     }
+    room[0][0] = room[0][15] = room[15][0] = room[15][15] = true;
+    for (int i = 1; i < 7; ++i) {
+        room[i][0] = room[0][i] = room[15][i] = room[i][15] = room[15 - i][0] = room[0][15 - i] = room[15][15 - i] = room[15 - i][15] = true;
+    }
+    room[1][1] = room[1][14] = room[14][1] = room[14][14] = true;
+    for (int dist = 1; dist < 6; ++dist) {
+        for (int i = 0; i < dist + 1; ++i) {
+            room[1 + i][1 + dist - i] = room[1 + i][dist - i] && room[i][1 + dist - i] && uniform_unit(rng) < .75;
+            room[14 - i][1 + dist - i] = room[14 - i][dist - i] && room[15 - i][1 + dist - i] && uniform_unit(rng) < .75;
+            room[1 + i][14 - dist + i] = room[1 + i][15 - dist + i] && room[i][14 - dist + i] && uniform_unit(rng) < .75;
+            room[14 - i][14 - dist + i] = room[14 - i][15 - dist + i] && room[15 - i][14 - dist + i] && uniform_unit(rng) < .75;
+        }
+    }
     return room;
 }
+
+void Game_handler::adapt() {
+    file.open("game_stats.txt", ios::out | ios::app);
+    file << format("{},{},{},{},{},{},{},{}\n",
+                   handler.protagonist.hp,
+                   handler.floor_data.protagonist_shots_fired,
+                   handler.floor_data.protagonist_shots_hit,
+                   handler.floor_data.protagonist_swings,
+                   handler.floor_data.protagonist_swings_hit,
+                   handler.floor_data.enemy_shots_fired,
+                   handler.floor_data.enemy_shots_hit,
+                   handler.floor_data.enemy_contact_hits
+    );
+    file.close();
+    double enemy_shot_precision = handler.floor_data.enemy_shots_hit / handler.floor_data.enemy_shots_fired;
+    double protagonist_shot_precision = handler.floor_data.protagonist_shots_hit / handler.floor_data.protagonist_shots_fired;
+    double protagonist_swing_preference = handler.floor_data.protagonist_swings / (handler.floor_data.protagonist_shots_fired + handler.floor_data.protagonist_swings);
+    double protagonist_status = handler.protagonist.hp / 30;
+}
+

@@ -7,7 +7,7 @@ if(MINGW)
     include_directories(SYSTEM "${SDL2_PATH}/include/SDL2")
 
     set(MINGW_STATIC "-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -lcomctl32 -lpsapi -Wl,-Bdynamic")
-    set(SDL2_STATIC " -Wl,-Bstatic -lmingw32 ${SDL2_PATH}/lib/libSDL2.a ${SDL2_PATH}/lib/libSDL2main.a ${SDL2_PATH}/lib/libSDL2_image.a -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -lm -ldinput8 -ldxguid -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lsetupapi -lversion -luuid -Wl,-Bdynamic")
+    set(SDL2_STATIC " -Wl,-Bstatic -lmingw32 ${SDL2_PATH}/lib/libSDL2.a ${SDL2_PATH}/lib/libSDL2main.a ${SDL2_PATH}/lib/libSDL2_image.a ${SDL2_PATH}/lib/libSDL2_mixer.a -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -lm -ldinput8 -ldxguid -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lsetupapi -lversion -luuid -Wl,-Bdynamic")
 
     set(CMAKE_CXX_STANDARD_LIBRARIES "${SDL2_STATIC} ${MINGW_STATIC} ${CMAKE_CXX_STANDARD_LIBRARIES}")
 else ()
