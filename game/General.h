@@ -111,6 +111,7 @@ public:
     int id_counter = 0;
     Entity protagonist;
     vector<Enemy> enemies{};
+    bool final_room;
     General_handler() = default;
 
     ~General_handler() {
@@ -121,7 +122,7 @@ public:
         }
     }
 
-    void initialize();
+    void initialize(bool final_room);
 
     void room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Direction);
 

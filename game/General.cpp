@@ -1,6 +1,6 @@
 #include "General.h"
 
-void General_handler::initialize() {
+void General_handler::initialize(bool final_room) {
     rng = mt19937_64(duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count());
     SDL_Init(SDL_INIT_VIDEO);
     IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
@@ -15,7 +15,9 @@ void General_handler::initialize() {
     swing_texture = IMG_LoadTexture(renderer, R"(C:\Users\Francesco\Desktop\Progetti\SS_game\Swing.png)");
     protagonist = Entity(vector<int>{400, 400}, 35, 35, 0, PROTAGONIST);
     enemies = {};
-    game_stats = Game_stats(20, 30, 1.0 / 120, 1.0 / 30, 20, 1);}
+    game_stats = Game_stats(20, 30, 1.0 / 120, 1.0 / 30, 20, 1);
+    this->final_room = final_room;
+}
 
 void General_handler::room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Direction direction) {
     constexpr double alpha_tick = 1.5;
