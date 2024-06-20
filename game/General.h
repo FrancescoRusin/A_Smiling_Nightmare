@@ -2,7 +2,7 @@
 #include "SDL_render.h"
 #include "SDL_image.h"
 #include "SDL_mixer.h"
-#include "SDL_ttf.h"
+//#include "SDL_ttf.h"
 #include "bits/stdc++.h"
 
 #ifndef SS_GAME_MAP_H
@@ -122,7 +122,7 @@ class General_handler {
     Mix_Chunk *clown_charge_sound{};
     Mix_Chunk *explosion_sound{};
 
-    TTF_Font *font;
+    //TTF_Font *font;
 
     mt19937_64 rng;
     normal_distribution<double> gauss = normal_distribution<double>();
@@ -144,6 +144,7 @@ public:
     bool final_room{};
     Game_stats game_stats{};
     Floor_data floor_data;
+    Mix_Music *background_music{};
     General_handler() = default;
 
     ~General_handler() {
@@ -154,6 +155,10 @@ public:
                 SDL_DestroyTexture(texture);
             }
         }
+        Mix_FreeMusic(background_music);
+        Mix_FreeChunk(explosion_sound);
+        Mix_FreeChunk(clown_charge_sound);
+        Mix_FreeChunk(karateka_kick_sound);
     }
 
     void initialize(bool final_room);

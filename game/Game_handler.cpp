@@ -53,6 +53,7 @@ void Game_handler::game() {
     handler.room_change_animation(rooms[36], enemies, NONE);
     bool keep_open = true;
     int prev_room_hp = 30;
+    Mix_PlayMusic(handler.background_music, -1);
     while (keep_open && floor_counter < 2) {
         // base loop
         while (keep_open && (!handler.enemies.empty() ||
@@ -67,7 +68,6 @@ void Game_handler::game() {
             adapt(prev_room_hp);
             prev_room_hp = handler.protagonist.hp;
             handler.room_change_animation(vector<vector<bool>>{}, vector<Enemy>{}, NONE);
-            handler.defeat_screen();
         } else {
             // if player took the trapdoor for the next floor
             if (handler.final_room && abs(handler.protagonist.position[0] - 400) < 25 && abs(handler.protagonist.position[1] - 400) < 25) {
@@ -123,7 +123,10 @@ void Game_handler::game() {
     }
     if (floor_counter == 2) {
         handler.victory_screen();
+    } else {
+        handler.defeat_screen();
     }
+    Mix_HaltMusic();
 }
 
 vector<int> Game_handler::build_floor() {
@@ -230,9 +233,9 @@ void Game_handler::adapt(int prev_room_hp) {
                    handler.floor_data.enemy_contact_hits
     );
     file.close();
-    double enemy_shot_precision = handler.floor_data.enemy_shots_hit / handler.floor_data.enemy_shots_fired;
-    double protagonist_shot_precision = handler.floor_data.protagonist_shots_hit / handler.floor_data.protagonist_shots_fired;
-    double protagonist_swing_preference = handler.floor_data.protagonist_swings / (handler.floor_data.protagonist_shots_fired + handler.floor_data.protagonist_swings);
+    double enemy_shot_precision = handler.floor_data.enemy_shots_hit / max(handler.floor_data.enemy_shots_fired, 1);
+    double protagonist_shot_precision = handler.floor_data.protagonist_shots_hit / max(handler.floor_data.protagonist_shots_fired, 1);
+    double protagonist_swing_preference = handler.floor_data.protagonist_swings / max(handler.floor_data.protagonist_shots_fired + handler.floor_data.protagonist_swings, 1);
     double protagonist_status = handler.protagonist.hp / 30;
     handler.game_stats.clown_shot_precision = min(max(handler.game_stats.clown_shot_precision + min((enemy_shot_precision - .2), .4) * 5, 0.0), 4.0);
     handler.game_stats.karateka_average_speed = min(max(handler.game_stats.karateka_average_speed + 2 * (protagonist_shot_precision > .75) - 1, 2), 7);

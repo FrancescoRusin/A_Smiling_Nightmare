@@ -7,13 +7,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake_modules)
 include(${CMAKE_MODULE_PATH}/SDL2-config.cmake)
 include_directories(${CMAKE_SOURCE_DIR}/game)
 
-find_package(Freetype REQUIRED)
-
 file(GLOB SOURCES game/*.cpp)
 
 add_executable(${PROJECT_NAME} Main.cpp;${SOURCES})
-
-link_libraries(${FT_LIBS})
 
 add_compile_options(-Wall)
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")

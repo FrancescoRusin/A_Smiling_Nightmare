@@ -22,10 +22,11 @@ void General_handler::initialize(bool final_room) {
     swing_texture = IMG_LoadTexture(renderer, R"(.\sprites\Swing.png)");
     trapdoor_texture = IMG_LoadTexture(renderer, R"(.\sprites\Trapdoor.png)");
     explosion_texture = IMG_LoadTexture(renderer, R"(.\sprites\Explosion.png)");
-    karateka_kick_sound = Mix_LoadWAV(R"(.\sounds\Karateka_kick.wav)");
-    clown_charge_sound = Mix_LoadWAV(R"(.\sounds\Clown_laugh.wav)");
-    explosion_sound = Mix_LoadWAV(R"(.\sounds\Explosion.wav)");
-    font = TTF_OpenFont("IsaacGame", 30);
+    karateka_kick_sound = Mix_LoadWAV(R"(.\sounds\Karateka_kick_sound.wav)");
+    clown_charge_sound = Mix_LoadWAV(R"(.\sounds\Clown_charge_sound.wav)");
+    explosion_sound = Mix_LoadWAV(R"(.\sounds\Clown_explosion_sound.wav)");
+    background_music = Mix_LoadMUS(R"(.\sounds\Background_music.wav)");
+    //font = TTF_OpenFont("IsaacGame", 30);
     protagonist = Entity(vector<int>{400, 400}, 25, 30, 0, PROTAGONIST);
     enemies = {};
     game_stats = Game_stats(7, 1.0 / 30, 15, 2);
@@ -593,7 +594,7 @@ void General_handler::victory_screen() const noexcept {
 }
 
 void General_handler::defeat_screen() const noexcept {
-    SDL_Surface *text_surface = TTF_RenderText_Solid(font, "GAME OVER", SDL_Color{255, 255, 255});
+    /*SDL_Surface *text_surface = TTF_RenderText_Solid(font, "GAME OVER", SDL_Color{255, 255, 255});
     SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
     SDL_FreeSurface(text_surface);
     SDL_SetTextureBlendMode(text_texture, SDL_BLENDMODE_BLEND);
@@ -604,7 +605,7 @@ void General_handler::defeat_screen() const noexcept {
         SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
         SDL_RenderPresent(renderer);
     }
-    stats_screen();
+    stats_screen();*/
 }
 
 void General_handler::stats_screen() const noexcept {
