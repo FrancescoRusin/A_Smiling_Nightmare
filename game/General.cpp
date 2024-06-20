@@ -29,7 +29,7 @@ void General_handler::initialize(bool final_room) {
     //font = TTF_OpenFont("IsaacGame", 30);
     protagonist = Entity(vector<int>{400, 400}, 25, 30, 0, PROTAGONIST);
     enemies = {};
-    game_stats = Game_stats(7, 1.0 / 30, 15, 2);
+    game_stats = Game_stats(4, 1.0 / 60, 15, 2);
     floor_data = Floor_data();
     this->final_room = final_room;
 }
@@ -121,7 +121,7 @@ void General_handler::base_render() noexcept {
     if (protagonist_swing) {
         SDL_SetTextureAlphaMod(swing_texture, 255 * 30 / protagonist_swing);
         double angle = atan2(protagonist_swing_direction[1], protagonist_swing_direction[0]) * 180 / M_PI + 45;
-        const auto rect = SDL_Rect(protagonist.position[0] - 2 * protagonist.radius, protagonist.position[1] - 2 * protagonist.radius, 4 * protagonist.radius, 4 * protagonist.radius);
+        const auto rect = SDL_Rect(protagonist.position[0] - 3 * protagonist.radius, protagonist.position[1] - 3 * protagonist.radius, 6 * protagonist.radius, 6 * protagonist.radius);
         SDL_RenderCopyEx(renderer, swing_texture, nullptr, &rect, angle, nullptr, SDL_FLIP_NONE);
         --protagonist_swing;
     }
@@ -305,7 +305,7 @@ bool General_handler::poll_events_and_update_positions() noexcept {
         bool one_hit = false;
         for (Enemy &e : enemies) {
             double distance_norm = point_point_distance(protagonist.position, e.position);
-            if (distance_norm < 3 * protagonist.radius + e.radius) {
+            if (distance_norm < 5 * protagonist.radius + e.radius) {
                 vector<int> distance{e.position[0] - protagonist.position[0], e.position[1] - protagonist.position[1]};
                 if (distance[0] * protagonist_swing_direction[0] + distance[1] * protagonist_swing_direction[1] > distance_norm * sqrt(.5)) {
                     if (!one_hit) {
@@ -438,9 +438,9 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                             ++floor_data.enemy_shots_fired;
                             enemy_shots.emplace_back(e.position, 5, 0, ++id_counter, ENEMY_SHOT);
                             enemy_shots.rbegin()->velocity[0] = static_cast<int>(protagonist_direction[0] * game_stats.clown_shot_speed +
-                                                                                 game_stats.clown_shot_precision * gauss(rng));
+                                                                                 game_stats.clown_shot_dispersion * gauss(rng));
                             enemy_shots.rbegin()->velocity[1] = static_cast<int>(protagonist_direction[1] * game_stats.clown_shot_speed +
-                                                                                 game_stats.clown_shot_precision * gauss(rng));
+                                                                                 game_stats.clown_shot_dispersion * gauss(rng));
                             sprite_clock[e.id] = 20;
                             e.current_sprite = 1;
                         } else if (uniform_real(rng) < game_stats.clown_shoot_probability * .1) {

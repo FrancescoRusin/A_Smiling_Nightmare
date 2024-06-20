@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(SS_game)
+project(Jam_game)
 
 set(CMAKE_CXX_STANDARD 20)
 

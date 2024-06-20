@@ -99,7 +99,7 @@ struct Game_stats {
     int karateka_average_speed;
     double clown_shoot_probability;
     double clown_shot_speed;
-    double clown_shot_precision;
+    double clown_shot_dispersion;
 };
 
 class General_handler {

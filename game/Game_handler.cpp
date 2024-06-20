@@ -35,7 +35,6 @@ vector<Direction> find_closed_directions(const vector<int> &floor, int room_numb
 }
 
 void Game_handler::game() {
-    int floor_counter = 0;
     uniform_int_distribution<int> final_room_extractor = uniform_int_distribution<int>(0, 7);
     handler.initialize(false);
     int room_number = 36;
@@ -54,7 +53,7 @@ void Game_handler::game() {
     bool keep_open = true;
     int prev_room_hp = 30;
     Mix_PlayMusic(handler.background_music, -1);
-    while (keep_open && floor_counter < 2) {
+    while (keep_open) {
         // base loop
         while (keep_open && (!handler.enemies.empty() ||
                              (abs(handler.protagonist.position[0] - 400) < 350 && abs(handler.protagonist.position[1] - 400) < 350)) &&
@@ -68,28 +67,13 @@ void Game_handler::game() {
             adapt(prev_room_hp);
             prev_room_hp = handler.protagonist.hp;
             handler.room_change_animation(vector<vector<bool>>{}, vector<Enemy>{}, NONE);
+            handler.defeat_screen();
         } else {
-            // if player took the trapdoor for the next floor
+            // if player took the trapdoor
             if (handler.final_room && abs(handler.protagonist.position[0] - 400) < 25 && abs(handler.protagonist.position[1] - 400) < 25) {
-                ++floor_counter;
                 handler.room_change_animation(vector<vector<bool>>{}, vector<Enemy>{}, NONE);
-                adapt(prev_room_hp);
-                prev_room_hp = 30;
-                handler.floor_data.reset();
-                handler.protagonist.hp = 30;
-                floor = build_floor();
-                cleared.clear();
-                rooms.clear();
-                for (int r: floor) {
-                    rooms[r] = build_room(find_closed_directions(floor, r));
-                }
-                final_room_number = floor[final_room_extractor(rng)];
-                while (final_room_number == 26 || final_room_number == 35 || final_room_number == 36 || final_room_number == 37 || final_room_number == 46) {
-                    final_room_number = floor[final_room_extractor(rng)];
-                }
-                room_number = 36;
-                handler.final_room = false;
-                handler.room_change_animation(rooms[room_number], build_enemies(rooms[room_number]), NONE);
+                keep_open = false;
+                handler.victory_screen();
             } else {
                 // if player just changed room
                 adapt(prev_room_hp);
@@ -120,11 +104,6 @@ void Game_handler::game() {
                 handler.room_change_animation(rooms[room_number], cleared[room_number] ? vector<Enemy>{} : build_enemies(rooms[room_number]), direction);
             }
         }
-    }
-    if (floor_counter == 2) {
-        handler.victory_screen();
-    } else {
-        handler.defeat_screen();
     }
     Mix_HaltMusic();
 }
@@ -233,13 +212,24 @@ void Game_handler::adapt(int prev_room_hp) {
                    handler.floor_data.enemy_contact_hits
     );
     file.close();
+    // relevant stats
     double enemy_shot_precision = handler.floor_data.enemy_shots_hit / max(handler.floor_data.enemy_shots_fired, 1);
-    double protagonist_shot_precision = handler.floor_data.protagonist_shots_hit / max(handler.floor_data.protagonist_shots_fired, 1);
+    double contact_hit_relevance = 3 * handler.floor_data.enemy_contact_hits / max(30 - handler.protagonist.hp, 3);
     double protagonist_swing_preference = handler.floor_data.protagonist_swings / max(handler.floor_data.protagonist_shots_fired + handler.floor_data.protagonist_swings, 1);
-    double protagonist_status = handler.protagonist.hp / 30;
-    handler.game_stats.clown_shot_precision = min(max(handler.game_stats.clown_shot_precision + min((enemy_shot_precision - .2), .4) * 5, 0.0), 4.0);
-    handler.game_stats.karateka_average_speed = min(max(handler.game_stats.karateka_average_speed + 2 * (protagonist_shot_precision > .75) - 1, 2), 7);
-    karateka_probability = min(max(karateka_probability - max(protagonist_swing_preference - .1, .2), 0.05), .95);
+
+    // upgraded values
+    double new_clown_shoot_probability = min(max(handler.game_stats.clown_shoot_probability + max(min((enemy_shot_precision - .2), .2), -.2) / 120, 1.0 / 360), 1.0 / 30);
+    int new_karateka_average_speed = min(max(handler.game_stats.karateka_average_speed - static_cast<int>(round(4 * max(contact_hit_relevance - .5, 0.0))), 2), 7);
+    double new_karateka_probability = min(max(karateka_probability - min(protagonist_swing_preference - .1, .1), 0.2), .8);
+    int new_average_num_of_enemies = min(max(average_num_of_enemies + 2 * (handler.protagonist.hp > prev_room_hp - 10) - 1, 2), 8);
+
+    // tracking
+    adaptations.emplace_back(new_clown_shoot_probability, new_karateka_average_speed, new_karateka_probability, new_average_num_of_enemies);
+
+    // actual upgrade
+    handler.game_stats.clown_shoot_probability = min(max(handler.game_stats.clown_shoot_probability + max(min((enemy_shot_precision - .2), .2), -.2) / 120, 1.0 / 360), 1.0 / 30);
+    handler.game_stats.karateka_average_speed = min(max(handler.game_stats.karateka_average_speed - static_cast<int>(round(4 * max(contact_hit_relevance - .5, 0.0))), 2), 7);
+    karateka_probability = min(max(karateka_probability - min(protagonist_swing_preference - .1, .1), 0.2), .8);
     average_num_of_enemies = min(max(average_num_of_enemies + 2 * (handler.protagonist.hp > prev_room_hp - 10) - 1, 2), 8);
 }
 
