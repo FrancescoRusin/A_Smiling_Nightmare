@@ -3,10 +3,11 @@
 #ifndef SS_GAME_GAME_HANDLER_H
 #define SS_GAME_GAME_HANDLER_H
 
-
 class Game_handler {
     General_handler handler{};
     mt19937_64 rng;
+    int average_num_of_enemies = 4;
+    double karateka_probability = .5;
 public:
     Game_handler() {
         rng = mt19937_64(duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count());
@@ -18,7 +19,7 @@ public:
 
     vector<vector<bool>> build_room(const vector<Direction> &directions);
 
-    vector<Enemy> build_enemies();
+    vector<Enemy> build_enemies(const vector<vector<bool>> &room);
 };
 
 vector<int> find_neighbors(int r);

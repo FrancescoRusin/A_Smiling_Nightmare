@@ -105,6 +105,7 @@ class General_handler {
     uniform_int_distribution<int> coin_flip = uniform_int_distribution<int>(0, 1);
 
     Uint32 framerate_last_tick = 0;
+    bool pause = false;
 
     Game_stats game_stats{};
 

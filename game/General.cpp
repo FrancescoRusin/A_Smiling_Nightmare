@@ -29,6 +29,7 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
     constexpr double alpha_tick = 1.5;
     constexpr double slide_tick = 3;
     if (room.empty()) {
+        cout << "base empty\n";
         room = new_room;
         enemies = new_room_enemies;
         SDL_SetTextureBlendMode(sprite_map[WALL][0], SDL_BLENDMODE_BLEND);
@@ -37,7 +38,6 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
         for (const Entity &e : enemies) {
             SDL_SetTextureBlendMode(sprite_map[e.type][0], SDL_BLENDMODE_BLEND);
         }
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         for (double i = 0; i <= 255; i += alpha_tick) {
             SDL_SetTextureAlphaMod(sprite_map[WALL][0], i);
             SDL_SetTextureAlphaMod(sprite_map[EMPTY_BOX][0], i);
@@ -45,6 +45,7 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
             for (const Entity &e : enemies) {
                 SDL_SetTextureAlphaMod(sprite_map[e.type][0], i);
             }
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             base_render();
         }
         SDL_SetTextureAlphaMod(sprite_map[WALL][0], 255);
@@ -56,15 +57,13 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
         return;
     }
     if (new_room.empty()) {
-        protagonist_shots = vector<Entity>{};
-        enemy_shots = vector<Entity>{};
+        cout << "new empty\n";
         SDL_SetTextureBlendMode(sprite_map[WALL][0], SDL_BLENDMODE_BLEND);
         SDL_SetTextureBlendMode(sprite_map[EMPTY_BOX][0], SDL_BLENDMODE_BLEND);
         SDL_SetTextureBlendMode(sprite_map[PROTAGONIST][0], SDL_BLENDMODE_BLEND);
         for (const Entity &e : enemies) {
             SDL_SetTextureBlendMode(sprite_map[e.type][e.current_sprite], SDL_BLENDMODE_BLEND);
         }
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         for (double i = 255; i >= 0; i -= alpha_tick) {
             SDL_SetTextureAlphaMod(sprite_map[WALL][0], i);
             SDL_SetTextureAlphaMod(sprite_map[EMPTY_BOX][0], i);
@@ -72,14 +71,17 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
             for (const Entity &e : enemies) {
                 SDL_SetTextureAlphaMod(sprite_map[e.type][e.current_sprite], i);
             }
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             base_render();
         }
         SDL_SetTextureAlphaMod(sprite_map[WALL][0], 255);
         SDL_SetTextureAlphaMod(sprite_map[EMPTY_BOX][0], 255);
         SDL_SetTextureAlphaMod(sprite_map[PROTAGONIST][0], 255);
         for (const Entity &e : enemies) {
-            SDL_SetTextureAlphaMod(sprite_map[e.type][e.current_sprite], 255);
+            SDL_SetTextureAlphaMod(sprite_map[e.type][0], 255);
         }
+        room = new_room;
+        enemies = new_room_enemies;
         return;
     }
     for (double i = 0; i < 800; i += slide_tick) {
@@ -122,6 +124,17 @@ void General_handler::base_render() noexcept {
         static const SDL_Rect trapdoor_rect(375, 375, 50, 50);
         SDL_RenderCopy(renderer, trapdoor_texture, nullptr, &trapdoor_rect);
     }
+    const SDL_Rect hp_bar = SDL_Rect(10, 10, max(0, 10 * protagonist.hp), 20);
+    int color[2];
+    if (protagonist.hp < 15) {
+        color[0] = 255;
+        color[1] = 17 * protagonist.hp;
+    } else {
+        color[0] = 255 - 17 * (protagonist.hp - 15);
+        color[1] = 255;
+    }
+    SDL_SetRenderDrawColor(renderer, color[0], color[1], 0, 255);
+    SDL_RenderFillRect(renderer, &hp_bar);
     SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
     SDL_RenderPresent(renderer);
     framerate_last_tick = SDL_GetTicks();
@@ -185,6 +198,15 @@ bool General_handler::poll_events_and_update_positions() noexcept {
         if (event.type == SDL_QUIT) {
             return false;
         }
+        if (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_p) {
+            pause = !pause;
+        }
+        if (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_k) {
+            enemies.clear();
+        }
+    }
+    if (pause) {
+        return true;
     }
     const Uint8 *keyboard_status = SDL_GetKeyboardState(nullptr);
     if (keyboard_status[SDL_SCANCODE_W]) {
@@ -403,6 +425,7 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                 if (collide(previous_positions, enemy_shots[i], protagonist)) {
                     enemy_shots.erase(next(enemy_shots.begin(), i));
                     protagonist.hit_tick = 60;
+                    protagonist.hp -= 2;
                     --i;
                 }
             }
@@ -419,11 +442,7 @@ bool General_handler::poll_events_and_update_positions() noexcept {
         }
     }
     protagonist.velocity[0] = protagonist.velocity[1] = 0;
-    if (protagonist.hp <= 0) {
-        cout << "GAME OVER";
-        return false;
-    }
-    return true;
+    return protagonist.hp > 0;
 }
 
 bool General_handler::collide(const map<int, vector<int>> &previous_positions, const Entity &entity1, const Entity &entity2) {
