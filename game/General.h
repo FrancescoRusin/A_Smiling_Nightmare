@@ -1,6 +1,7 @@
 #include "SDL.h"
 #include "SDL_render.h"
 #include "SDL_image.h"
+#include "SDL_mixer.h"
 #include "bits/stdc++.h"
 
 #ifndef SS_GAME_MAP_H
@@ -107,12 +108,18 @@ class General_handler {
     map<Sprite_type, vector<SDL_Texture *>> sprite_map{};
     map<int, int> sprite_clock{};
     map<int, int> karateka_kick_animation{};
+    map<int, int> clown_explosion{};
+    map<int, int> clown_charge{};
     vector<Entity> enemy_shots{};
     vector<Entity> protagonist_shots{};
     int protagonist_swing{};
     vector<int> protagonist_swing_direction{};
     SDL_Texture *swing_texture{};
     SDL_Texture *trapdoor_texture{};
+    SDL_Texture *explosion_texture{};
+    Mix_Chunk *karateka_kick_sound{};
+    Mix_Chunk *clown_charge_sound{};
+    Mix_Chunk *explosion_sound{};
 
     mt19937_64 rng;
     normal_distribution<double> gauss = normal_distribution<double>();
