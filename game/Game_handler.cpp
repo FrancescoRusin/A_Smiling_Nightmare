@@ -35,6 +35,7 @@ vector<Direction> find_closed_directions(const vector<int> &floor, int room_numb
 }
 
 void Game_handler::game() {
+    int floor_counter = 0;
     uniform_int_distribution<int> final_room_extractor = uniform_int_distribution<int>(0, 7);
     handler.initialize(false);
     int room_number = 36;
@@ -51,7 +52,8 @@ void Game_handler::game() {
     vector<Enemy> enemies = build_enemies(rooms[36]);
     handler.room_change_animation(rooms[36], enemies, NONE);
     bool keep_open = true;
-    while (keep_open) {
+    int prev_room_hp = 30;
+    while (keep_open && floor_counter < 2) {
         // base loop
         while (keep_open && (!handler.enemies.empty() ||
                              (abs(handler.protagonist.position[0] - 400) < 350 && abs(handler.protagonist.position[1] - 400) < 350)) &&
@@ -62,13 +64,17 @@ void Game_handler::game() {
         }
         // if player is dead or game was quitted
         if (!keep_open) {
-            adapt();
+            adapt(prev_room_hp);
+            prev_room_hp = handler.protagonist.hp;
             handler.room_change_animation(vector<vector<bool>>{}, vector<Enemy>{}, NONE);
+            handler.defeat_screen();
         } else {
             // if player took the trapdoor for the next floor
             if (handler.final_room && abs(handler.protagonist.position[0] - 400) < 25 && abs(handler.protagonist.position[1] - 400) < 25) {
+                ++floor_counter;
                 handler.room_change_animation(vector<vector<bool>>{}, vector<Enemy>{}, NONE);
-                adapt();
+                adapt(prev_room_hp);
+                prev_room_hp = 30;
                 handler.floor_data.reset();
                 handler.protagonist.hp = 30;
                 floor = build_floor();
@@ -86,6 +92,8 @@ void Game_handler::game() {
                 handler.room_change_animation(rooms[room_number], build_enemies(rooms[room_number]), NONE);
             } else {
                 // if player just changed room
+                adapt(prev_room_hp);
+                prev_room_hp = handler.protagonist.hp;
                 cleared[room_number] = true;
                 Direction direction = NONE;
                 if (handler.protagonist.position[0] > 750) {
@@ -112,6 +120,9 @@ void Game_handler::game() {
                 handler.room_change_animation(rooms[room_number], cleared[room_number] ? vector<Enemy>{} : build_enemies(rooms[room_number]), direction);
             }
         }
+    }
+    if (floor_counter == 2) {
+        handler.victory_screen();
     }
 }
 
@@ -206,7 +217,7 @@ vector<vector<bool>> Game_handler::build_room(const vector<Direction> &direction
     return room;
 }
 
-void Game_handler::adapt() {
+void Game_handler::adapt(int prev_room_hp) {
     file.open("game_stats.txt", ios::out | ios::app);
     file << format("{},{},{},{},{},{},{},{}\n",
                    handler.protagonist.hp,
@@ -223,5 +234,9 @@ void Game_handler::adapt() {
     double protagonist_shot_precision = handler.floor_data.protagonist_shots_hit / handler.floor_data.protagonist_shots_fired;
     double protagonist_swing_preference = handler.floor_data.protagonist_swings / (handler.floor_data.protagonist_shots_fired + handler.floor_data.protagonist_swings);
     double protagonist_status = handler.protagonist.hp / 30;
+    handler.game_stats.clown_shot_precision = min(max(handler.game_stats.clown_shot_precision + min((enemy_shot_precision - .2), .4) * 5, 0.0), 4.0);
+    handler.game_stats.karateka_average_speed = min(max(handler.game_stats.karateka_average_speed + 2 * (protagonist_shot_precision > .75) - 1, 2), 7);
+    karateka_probability = min(max(karateka_probability - max(protagonist_swing_preference - .1, .2), 0.05), .95);
+    average_num_of_enemies = min(max(average_num_of_enemies + 2 * (handler.protagonist.hp > prev_room_hp - 10) - 1, 2), 8);
 }
 

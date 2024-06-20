@@ -2,6 +2,7 @@
 #include "SDL_render.h"
 #include "SDL_image.h"
 #include "SDL_mixer.h"
+#include "SDL_ttf.h"
 #include "bits/stdc++.h"
 
 #ifndef SS_GAME_MAP_H
@@ -121,6 +122,8 @@ class General_handler {
     Mix_Chunk *clown_charge_sound{};
     Mix_Chunk *explosion_sound{};
 
+    TTF_Font *font;
+
     mt19937_64 rng;
     normal_distribution<double> gauss = normal_distribution<double>();
     uniform_real_distribution<double> uniform_real = uniform_real_distribution<double>(0, 1);
@@ -160,6 +163,12 @@ public:
     void base_render() noexcept;
 
     bool poll_events_and_update_positions() noexcept;
+
+    void defeat_screen() const noexcept;
+
+    void victory_screen() const noexcept;
+
+    void stats_screen() const noexcept;
 };
 
 double line_point_distance(int *line, const vector<int> &point);

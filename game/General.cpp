@@ -5,6 +5,7 @@ void General_handler::initialize(bool final_room) {
     SDL_Init(SDL_INIT_VIDEO);
     IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
     Mix_Init(0);
+    TTF_Init();
     Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024);
     SDL_CreateWindowAndRenderer(800, 800, 0, &window, &renderer);
     sprite_map[WALL].push_back(IMG_LoadTexture(renderer, R"(.\sprites\Brick_wall.jpg)"));
@@ -25,6 +26,7 @@ void General_handler::initialize(bool final_room) {
     karateka_kick_sound = Mix_LoadWAV(R"(.\sounds\Karateka_kick.wav)");
     clown_charge_sound = Mix_LoadWAV(R"(.\sounds\Clown_laugh.wav)");
     explosion_sound = Mix_LoadWAV(R"(.\sounds\Explosion.wav)");
+    font = TTF_OpenFont("IsaacGame", 30);
     protagonist = Entity(vector<int>{400, 400}, 25, 30, 0, PROTAGONIST);
     enemies = {};
     game_stats = Game_stats(7, 1.0 / 30, 15, 2);
@@ -51,6 +53,7 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
             for (const Entity &e : enemies) {
                 SDL_SetTextureAlphaMod(sprite_map[e.type][0], i);
             }
+            SDL_SetTextureAlphaMod(explosion_texture, i);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             base_render();
         }
@@ -60,6 +63,7 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
         for (const Entity &e : enemies) {
             SDL_SetTextureAlphaMod(sprite_map[e.type][0], 255);
         }
+        SDL_SetTextureAlphaMod(explosion_texture, 255);
         return;
     }
     if (new_room.empty()) {
@@ -271,7 +275,9 @@ bool General_handler::poll_events_and_update_positions() noexcept {
     if (protagonist.action_tick) {
         --protagonist.action_tick;
     } else if (swing) {
-        ++floor_data.protagonist_swings;
+        if (!enemies.empty()) {
+            ++floor_data.protagonist_swings;
+        }
         protagonist.action_tick = 30;
         protagonist_swing = 6;
         protagonist_swing_direction = vector<int>(2);
@@ -314,7 +320,9 @@ bool General_handler::poll_events_and_update_positions() noexcept {
     } else {
         protagonist.action_tick = 20;
         if (shoot != NONE) {
-            ++floor_data.protagonist_shots_fired;
+            if (!enemies.empty()) {
+                ++floor_data.protagonist_shots_fired;
+            }
             protagonist_shots.emplace_back(protagonist.position, 5, 0, ++id_counter, PROTAGONIST_SHOT);
         }
         switch (shoot) {
@@ -581,6 +589,34 @@ bool General_handler::avoid_wall_collision(Entity &entity) {
     return collision;
 }
 
+void General_handler::victory_screen() const noexcept {
+    //SDL_Surface *
+}
+
+void General_handler::defeat_screen() const noexcept {
+    SDL_Surface *text_surface = TTF_RenderText_Solid(font, "GAME OVER", SDL_Color{255, 255, 255});
+    SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+    SDL_FreeSurface(text_surface);
+    SDL_SetTextureBlendMode(text_texture, SDL_BLENDMODE_BLEND);
+    const SDL_Rect text_box = SDL_Rect(50, 300, 700, 200);
+    for (int i = 0; i <= 255; i += 2) {
+        SDL_SetTextureAlphaMod(text_texture, i);
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
+        SDL_RenderPresent(renderer);
+    }
+    stats_screen();
+}
+
+void General_handler::stats_screen() const noexcept {
+    //SDL_Surface *
+}
+
+void Entity::render(SDL_Renderer *renderer, SDL_Texture *texture) const noexcept {
+    const auto mob_crop = SDL_Rect(position[0] - radius, position[1] - radius, 2 * radius, 2 * radius);
+    SDL_RenderCopy(renderer, texture, nullptr, &mob_crop);
+}
+
 double line_point_distance(int *line, const vector<int> &point) {
     return abs(line[0] * point[0] + line[1] * point[1] + line[2]) / sqrt(point[0] * point[0] + point[1] * point[1]);
 }
@@ -598,9 +634,4 @@ vector<double> line_line_intersection(int *line1, int *line2) {
 
 double point_point_distance(const vector<int> &p1, const vector<int> &p2) {
     return sqrt((p1[0] - p2[0]) * (p1[0] - p2[0]) + (p1[1] - p2[1]) * (p1[1] - p2[1]));
-}
-
-void Entity::render(SDL_Renderer *renderer, SDL_Texture *texture) const noexcept {
-    const auto mob_crop = SDL_Rect(position[0] - radius, position[1] - radius, 2 * radius, 2 * radius);
-    SDL_RenderCopy(renderer, texture, nullptr, &mob_crop);
 }

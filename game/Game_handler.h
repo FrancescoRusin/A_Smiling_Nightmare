@@ -24,7 +24,7 @@ public:
 
     vector<Enemy> build_enemies(const vector<vector<bool>> &room);
 
-    void adapt();
+    void adapt(int prev_room_hp);
 };
 
 vector<int> find_neighbors(int r);
