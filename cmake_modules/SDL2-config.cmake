@@ -1,5 +1,5 @@
 if(MINGW)
-    if(${CMAKE_SOURCE_DIR} STREQUAL "C:/Users/Francesco/CLionProjects/SS_game")
+    if(${CMAKE_SOURCE_DIR} STREQUAL "C:/Users/Francesco/CLionProjects/Jam_game")
         set(SDL2_PATH C:/Users/Francesco/Desktop/Progetti/Librerie/SDL2-2.28.4/x86_64-w64-mingw32)
     else ()
         set(SDL2_PATH C:/Users/Admi9n/Desktop/Librerie/SDL2/x86_64-w64-mingw32)
