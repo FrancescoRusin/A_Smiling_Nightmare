@@ -345,7 +345,7 @@ bool General_handler::poll_events_and_update_positions() noexcept {
             if (!enemies.empty()) {
                 ++floor_data.protagonist_shots_fired;
             }
-            protagonist_shots.emplace_back(protagonist.position, 5, 0, ++id_counter, PROTAGONIST_SHOT);
+            protagonist_shots.emplace_back(protagonist.position, 10, 0, ++id_counter, PROTAGONIST_SHOT);
         }
         switch (shoot) {
             case UP:
@@ -459,7 +459,7 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                         }
                         if (uniform_real(rng) < game_stats.clown_shoot_probability) {
                             ++floor_data.enemy_shots_fired;
-                            enemy_shots.emplace_back(e.position, 5, 0, ++id_counter, ENEMY_SHOT);
+                            enemy_shots.emplace_back(e.position, 10, 0, ++id_counter, ENEMY_SHOT);
                             enemy_shots.rbegin()->velocity[0] = static_cast<int>(round(protagonist_direction[0] * 15 + 2 * gauss(rng)));
                             enemy_shots.rbegin()->velocity[1] = static_cast<int>(round(protagonist_direction[1] * 15 + 2 * gauss(rng)));
                             sprite_clock[e.id] = 20;
@@ -612,7 +612,7 @@ bool General_handler::avoid_wall_collision(Entity &entity) {
 }
 
 void General_handler::initial_timer() noexcept {
-    static const SDL_Rect text_box = SDL_Rect(150, 200, 400, 400);
+    static const SDL_Rect text_box = SDL_Rect(200, 200, 400, 400);
     for (int i = 3; i > 0; --i) {
         SDL_Surface *text_surface = TTF_RenderText_Solid(standard_font, to_string(i).c_str(), SDL_Color{0, 0, 0});
         SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
