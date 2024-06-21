@@ -65,10 +65,8 @@ void Game_handler::game() {
         }
         // if player is dead or game was quitted
         if (!keep_open) {
-            adapt(prev_room_hp);
-            prev_room_hp = handler.protagonist.hp;
             Mix_HaltMusic();
-            handler.room_change_animation(vector<vector<bool>>{}, vector<Enemy>{}, NONE);
+            handler.room_change_animation(vector<vector<bool>>{}, enemies, NONE);
             if (handler.protagonist.hp <= 0) {
                 handler.defeat_screen();
             } else {
@@ -82,8 +80,6 @@ void Game_handler::game() {
                 handler.victory_screen();
             } else {
                 // if player just changed room
-                adapt(prev_room_hp);
-                prev_room_hp = handler.protagonist.hp;
                 cleared[room_number] = true;
                 Direction direction = NONE;
                 if (handler.protagonist.position[0] > 750) {
@@ -104,6 +100,8 @@ void Game_handler::game() {
                     room_number -= 8;
                 }
                 if (!cleared[room_number]) {
+                    adapt(prev_room_hp);
+                    prev_room_hp = handler.protagonist.hp;
                     handler.protagonist.hp = min(30, handler.protagonist.hp + 10);
                 }
                 handler.final_room = (room_number == final_room_number);
@@ -140,9 +138,10 @@ vector<int> Game_handler::build_floor() {
 
 vector<Enemy> Game_handler::build_enemies(const vector<vector<bool>> &room) {
     uniform_int_distribution<int> uniform800 = uniform_int_distribution<int>(0, 799);
-    const int n_of_enemies = average_num_of_enemies + static_cast<int>(round(normal_distribution<double>()(rng)));
+    const int n_of_enemies = max(average_num_of_enemies + static_cast<int>(round(normal_distribution<double>()(rng))), 1);
     vector<Enemy> enemies(0);
     vector<int> position(2);
+    handler.total_n_of_enemies += n_of_enemies;
     for (int i = 0; i < n_of_enemies; ++i) {
         position[0] = uniform800(rng);
         position[1] = uniform800(rng);
@@ -152,6 +151,7 @@ vector<Enemy> Game_handler::build_enemies(const vector<vector<bool>> &room) {
             position[1] = uniform800(rng);
         }
         if (uniform_unit(rng) < karateka_probability) {
+            ++handler.total_n_of_karateka;
             enemies.emplace_back(position, 25, 20, ++(handler.id_counter), KARATEKA, handler.game_stats.karateka_average_speed, 2);
         } else {
             enemies.emplace_back(position, 25, 10, ++(handler.id_counter), CLOWN, 0, .8);
@@ -206,23 +206,29 @@ vector<vector<bool>> Game_handler::build_room(const vector<Direction> &direction
 
 void Game_handler::adapt(int prev_room_hp) {
     // relevant stats
-    double enemy_shot_precision = handler.floor_data.enemy_shots_hit / max(handler.floor_data.enemy_shots_fired, 1);
-    double contact_hit_relevance = 3 * handler.floor_data.enemy_contact_hits / max(30 - handler.protagonist.hp, 3);
-    double protagonist_swing_preference = handler.floor_data.protagonist_swings / max(handler.floor_data.protagonist_shots_fired + handler.floor_data.protagonist_swings, 1);
+    double enemy_shot_relevance = handler.total_n_of_enemies == handler.total_n_of_karateka ? .75 :
+            (handler.floor_data.enemy_shots_hit / static_cast<double>(max(handler.floor_data.enemy_contact_hits + handler.floor_data.enemy_shots_hit + handler.floor_data.enemy_explosion_hits, 1))) /
+            (max(handler.total_n_of_enemies - handler.total_n_of_karateka, 1) / static_cast<double>(handler.total_n_of_enemies));
+    double contact_hit_relevance = handler.total_n_of_karateka == 0 ? .75 :
+            (handler.floor_data.enemy_contact_hits / static_cast<double>(max(handler.floor_data.enemy_contact_hits + handler.floor_data.enemy_shots_hit + handler.floor_data.enemy_explosion_hits, 1))) /
+            (handler.total_n_of_karateka / static_cast<double>(max(handler.total_n_of_enemies, 1)));
+    double protagonist_swing_preference = handler.floor_data.protagonist_swings_hit /
+            static_cast<double>(max(handler.floor_data.protagonist_shots_fired + handler.floor_data.protagonist_swings_hit, 1));
 
     // upgraded values
-    double new_clown_shoot_probability = min(max(handler.game_stats.clown_shoot_probability + max(min((enemy_shot_precision - .2), .2), -.2) / 120, 1.0 / 360), 1.0 / 30);
-    int new_karateka_average_speed = min(max(handler.game_stats.karateka_average_speed - static_cast<int>(round(4 * max(contact_hit_relevance - .5, 0.0))), 2), 7);
-    double new_karateka_probability = min(max(karateka_probability - min(protagonist_swing_preference - .1, .1), 0.2), .8);
-    int new_average_num_of_enemies = min(max(average_num_of_enemies + 2 * (handler.protagonist.hp > prev_room_hp - 10) - 1, 2), 8);
+    double new_clown_shoot_probability = min(max(handler.game_stats.clown_shoot_probability - min(max(enemy_shot_relevance - .75, -.25), .25) / 30, 1.0 / 360), 1.0 / 30);
+    int new_karateka_average_speed = min(max(handler.game_stats.karateka_average_speed - static_cast<int>(round(4 * min(max(contact_hit_relevance - .75, -.25), .25))), 2), 7);
+    double new_karateka_probability = min(max(karateka_probability - max(min(protagonist_swing_preference - .2, .1), -.1), 0.25), .75);
+    int new_average_num_of_enemies = min(max(average_num_of_enemies + 2 * (handler.protagonist.hp > prev_room_hp) - 1 + (handler.protagonist.hp > 20) -
+            (handler.protagonist.hp < prev_room_hp - 10) - (handler.protagonist.hp <= 10), 2), 8);
 
     // tracking
-    adaptations.emplace_back(new_clown_shoot_probability, new_karateka_average_speed, new_karateka_probability, new_average_num_of_enemies);
+    handler.adaptations.emplace_back(new_clown_shoot_probability, new_karateka_average_speed, new_karateka_probability, new_average_num_of_enemies);
 
     // actual upgrade
-    handler.game_stats.clown_shoot_probability = min(max(handler.game_stats.clown_shoot_probability + max(min((enemy_shot_precision - .2), .2), -.2) / 120, 1.0 / 360), 1.0 / 30);
-    handler.game_stats.karateka_average_speed = min(max(handler.game_stats.karateka_average_speed - static_cast<int>(round(4 * max(contact_hit_relevance - .5, 0.0))), 2), 7);
-    karateka_probability = min(max(karateka_probability - min(protagonist_swing_preference - .1, .1), 0.2), .8);
-    average_num_of_enemies = min(max(average_num_of_enemies + 2 * (handler.protagonist.hp > prev_room_hp - 10) - 1, 2), 8);
+    handler.game_stats.clown_shoot_probability = new_clown_shoot_probability;
+    handler.game_stats.karateka_average_speed = new_karateka_average_speed;
+    karateka_probability = new_karateka_probability;
+    average_num_of_enemies = new_average_num_of_enemies;
 }
 

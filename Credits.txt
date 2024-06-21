@@ -1,5 +1,5 @@
 Font:
-https://moddingofisaac.com/mod/1701/team-meat-font
+https://moddingofisaac.com/mod/1701/team-meat-isaac_font
 
 Womp womp:
 https://orangefreesounds.com/womp-womp/

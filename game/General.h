@@ -82,12 +82,20 @@ struct Floor_data {
     int protagonist_swings_hit{};
     int enemy_shots_fired{};
     int enemy_shots_hit{};
+    int enemy_explosion_hits{};
     int enemy_contact_hits{};
 };
 
 struct Game_stats {
     int karateka_average_speed;
     double clown_shoot_probability;
+};
+
+struct Room_adaptations {
+    double clown_shoot_probability;
+    int karateka_average_speed;
+    double karateka_probability;
+    int average_number_of_enemies;
 };
 
 class General_handler {
@@ -112,7 +120,8 @@ class General_handler {
     Mix_Chunk *victory_sound{};
     Mix_Chunk *game_over_sound{};
 
-    TTF_Font *font;
+    TTF_Font *isaac_font;
+    TTF_Font *standard_font;
 
     mt19937_64 rng;
     normal_distribution<double> gauss = normal_distribution<double>();
@@ -131,11 +140,14 @@ public:
     int id_counter = 0;
     int game_time;
     int room_time;
+    int total_n_of_enemies = 0;
+    int total_n_of_karateka = 0;
     Entity protagonist;
     vector<Enemy> enemies{};
     bool final_room{};
     Game_stats game_stats{};
     Floor_data floor_data;
+    vector<Room_adaptations> adaptations{};
     Mix_Music *background_music{};
     General_handler() = default;
 
@@ -153,7 +165,7 @@ public:
         Mix_FreeChunk(karateka_kick_sound);
         Mix_FreeChunk(victory_sound);
         Mix_FreeChunk(game_over_sound);
-        TTF_CloseFont(font);
+        TTF_CloseFont(isaac_font);
     }
 
     void initialize(bool final_room);

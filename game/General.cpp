@@ -30,11 +30,13 @@ void General_handler::initialize(bool final_room) {
     background_music = Mix_LoadMUS(R"(.\sounds\Background_music.wav)");
     victory_sound = Mix_LoadWAV(R"(.\sounds\Applause.wav)");
     game_over_sound = Mix_LoadWAV(R"(.\sounds\Game_over.wav)");
-    font = TTF_OpenFont("Text_font.ttf", 200);
+    isaac_font = TTF_OpenFont(R"(.\fonts\Isaac_font.ttf)", 200);
+    standard_font = TTF_OpenFont(R"(.\fonts\ColabBol.otf)", 200);
     protagonist = Entity(vector<int>{400, 400}, 25, 30, 0, PROTAGONIST);
     enemies = {};
     game_stats = Game_stats(4, 1.0 / 60);
     floor_data = Floor_data();
+    adaptations = {};
     this->final_room = final_room;
     game_time = 0;
     room_time = 0;
@@ -88,10 +90,10 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
                 SDL_SetTextureAlphaMod(sprite_map[e.type][e.current_sprite], i);
             }
             for (const Entity &e : enemy_shots) {
-                SDL_SetTextureAlphaMod(sprite_map[e.type][0], 255);
+                SDL_SetTextureAlphaMod(sprite_map[e.type][0], i);
             }
             for (const Entity &e : protagonist_shots) {
-                SDL_SetTextureAlphaMod(sprite_map[e.type][0], 255);
+                SDL_SetTextureAlphaMod(sprite_map[e.type][0], i);
             }
             SDL_SetTextureAlphaMod(explosion_texture, i);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -247,8 +249,11 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                     break;
                 case SDLK_k:
                     // instakill button for testing
-                    //enemies.clear();
+                    enemies.clear();
                     break;
+                case SDLK_j:
+                    // instadeath button for testing
+                    protagonist.hp = 0;
                 case SDLK_q:
                     if (pause) {
                         return false;
@@ -440,6 +445,7 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                             Mix_PlayChannel(-1, clown_explosion_sound, 0);
                             protagonist.hp -= 8;
                             protagonist.hit_tick = 60;
+                            ++floor_data.enemy_explosion_hits;
                         } else if (clown_charge[e.id] == 1) {
                             clown_explosion[e.id] = 45;
                             Mix_PlayChannel(-1, clown_explosion_sound, 0);
@@ -606,19 +612,19 @@ bool General_handler::avoid_wall_collision(Entity &entity) {
 }
 
 void General_handler::initial_timer() noexcept {
-    SDL_Rect text_box = SDL_Rect(200, 200, 300, 300);
+    static const SDL_Rect text_box = SDL_Rect(150, 200, 400, 400);
     for (int i = 3; i > 0; --i) {
-        SDL_Surface *text_surface = TTF_RenderText_Solid(font, to_string(i).c_str(), SDL_Color{0, 0, 0});
+        SDL_Surface *text_surface = TTF_RenderText_Solid(standard_font, to_string(i).c_str(), SDL_Color{0, 0, 0});
         SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
         SDL_FreeSurface(text_surface);
-        for (int i = 0; i < 60; ++i) {
+        for (int j = 0; j < 60; ++j) {
             SDL_RenderClear(renderer);
             static auto map_crop = SDL_Rect(0, 0, 50, 50);
-            for (int i = 0; i < 16; ++i) {
-                for (int j = 0; j < 16; ++j) {
-                    map_crop.x = 50 * i;
-                    map_crop.y = 50 * j;
-                    SDL_RenderCopy(renderer, sprite_map[room[i][j] ? WALL : EMPTY_BOX][0], nullptr, &map_crop);
+            for (int x = 0; x < 16; ++x) {
+                for (int y = 0; y < 16; ++y) {
+                    map_crop.x = 50 * x;
+                    map_crop.y = 50 * y;
+                    SDL_RenderCopy(renderer, sprite_map[room[x][y] ? WALL : EMPTY_BOX][0], nullptr, &map_crop);
                 }
             }
             protagonist.render(renderer, sprite_map[PROTAGONIST][0]);
@@ -637,11 +643,12 @@ void General_handler::initial_timer() noexcept {
 void General_handler::victory_screen() noexcept {
     Mix_HaltMusic();
     Mix_PlayChannel(-1, victory_sound, 0);
-    SDL_Surface *text_surface = TTF_RenderText_Solid(font, "YOU WIN!", SDL_Color{255, 255, 255});
+    SDL_Surface *text_surface = TTF_RenderText_Solid(isaac_font, "YOU WIN!", SDL_Color{255, 255, 255});
     SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
     SDL_SetTextureBlendMode(text_texture, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     const SDL_Rect text_box = SDL_Rect(50, 300, 700, 200);
+    SDL_Event event;
     for (int i = 0; i <= 255; i += 1) {
         SDL_RenderClear(renderer);
         SDL_SetTextureAlphaMod(text_texture, i);
@@ -649,6 +656,16 @@ void General_handler::victory_screen() noexcept {
         SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
         SDL_RenderPresent(renderer);
         framerate_last_tick = SDL_GetTicks();
+        while(SDL_PollEvent(&event)) {}
+    }
+    for (int i = 255; i >= 0; i -= 1) {
+        SDL_RenderClear(renderer);
+        SDL_SetTextureAlphaMod(text_texture, i);
+        SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
+        SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
+        SDL_RenderPresent(renderer);
+        framerate_last_tick = SDL_GetTicks();
+        while(SDL_PollEvent(&event)) {}
     }
     SDL_FreeSurface(text_surface);
     stats_screen();
@@ -656,12 +673,13 @@ void General_handler::victory_screen() noexcept {
 
 void General_handler::defeat_screen() noexcept {
     Mix_HaltMusic();
-    int channel = Mix_PlayChannel(-1, game_over_sound, 0);
-    SDL_Surface *text_surface = TTF_RenderText_Solid(font, "GAME OVER", SDL_Color{255, 255, 255});
+    Mix_PlayChannel(-1, game_over_sound, 0);
+    SDL_Surface *text_surface = TTF_RenderText_Solid(isaac_font, "GAME OVER", SDL_Color{255, 255, 255});
     SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
     SDL_SetTextureBlendMode(text_texture, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     const SDL_Rect text_box = SDL_Rect(50, 300, 700, 200);
+    SDL_Event event;
     for (int i = 0; i <= 255; i += 1) {
         SDL_RenderClear(renderer);
         SDL_SetTextureAlphaMod(text_texture, i);
@@ -669,40 +687,181 @@ void General_handler::defeat_screen() noexcept {
         SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
         SDL_RenderPresent(renderer);
         framerate_last_tick = SDL_GetTicks();
+        while(SDL_PollEvent(&event)) {}
     }
-    Mix_HaltChannel(channel);
+    for (int i = 255; i >= 0; i -= 1) {
+        SDL_RenderClear(renderer);
+        SDL_SetTextureAlphaMod(text_texture, i);
+        SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
+        SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
+        SDL_RenderPresent(renderer);
+        framerate_last_tick = SDL_GetTicks();
+        while(SDL_PollEvent(&event)) {}
+    }
     SDL_FreeSurface(text_surface);
     stats_screen();
 }
 
 void General_handler::stats_screen() noexcept {
-    SDL_Surface *text_surface = TTF_RenderText_Solid(font, "STATS", SDL_Color{255, 255, 255});
-    SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
-    SDL_SetTextureBlendMode(text_texture, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    const SDL_Rect text_box = SDL_Rect(50, 300, 700, 200);
-    for (int i = 0; i <= 255; i += 1) {
-        SDL_RenderClear(renderer);
-        SDL_SetTextureAlphaMod(text_texture, i);
-        SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
-        SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
-        SDL_RenderPresent(renderer);
-        framerate_last_tick = SDL_GetTicks();
+    const double total_hits = max(floor_data.enemy_shots_hit + floor_data.enemy_explosion_hits + floor_data.enemy_contact_hits, 1);
+    vector<string> stats = {
+            "ENEMIES KILLED: " + to_string(total_n_of_enemies - enemies.size()),
+            "FINAL HP: " + to_string(max(protagonist.hp, 0)),
+            "TOTAL TIME: " + to_string(game_time / 60) + "s",
+            "SHOT ACCURACY: " + to_string(static_cast<int>(round(100 * floor_data.protagonist_shots_hit / static_cast<double>(max(floor_data.protagonist_shots_fired, 1))))) + "%",
+            "ENEMY SHOT ACCURACY: " + to_string(static_cast<int>(round(100 * floor_data.enemy_shots_hit / static_cast<double>(max(floor_data.enemy_shots_fired, 1))))) + "%",
+            "TOTAL TIMES HIT: " + to_string(floor_data.enemy_shots_hit + floor_data.enemy_explosion_hits + floor_data.enemy_contact_hits),
+            to_string(static_cast<int>(round(100 * floor_data.enemy_contact_hits / total_hits))) + "% CONTACT; " +
+            to_string(static_cast<int>(round(100 * floor_data.enemy_shots_hit / total_hits))) + "% SHOT; " +
+            to_string(static_cast<int>(round(100 * floor_data.enemy_explosion_hits / total_hits))) + "% EXPLOSION"
+    };
+    int n_of_lines = stats.size();
+    double max_size = max_element(stats.begin(), stats.end(), [](const string &s1, const string &s2) { return s1.size() < s2.size(); })->size();
+    double text_height = 600.0 / n_of_lines;
+    SDL_Surface *surface = TTF_RenderUTF8_Solid(isaac_font, "YOUR STATS", SDL_Color{255, 255, 255});
+    SDL_Texture *title_texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+    vector<SDL_Texture *> text_textures{};
+    for (const string &s: stats) {
+        surface = TTF_RenderUTF8_Solid(standard_font, s.c_str(), SDL_Color{255, 255, 255});
+        text_textures.push_back(SDL_CreateTextureFromSurface(renderer, surface));
+        SDL_FreeSurface(surface);
     }
-    bool keep_open = true;
-    while(keep_open) {
-        static SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_q)) {
-                keep_open = false;
-            }
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    static SDL_Rect text_box = SDL_Rect();
+    static const SDL_Rect title_box = SDL_Rect(10, 10, 780, 100);
+    text_box.h = text_height;
+    for (int i = 0; i <= 255; i += 2) {
+        SDL_RenderClear(renderer);
+        SDL_SetTextureAlphaMod(title_texture, i);
+        SDL_RenderCopy(renderer, title_texture, nullptr, &title_box);
+        for (int j = 0; j < n_of_lines; ++j) {
+            SDL_SetTextureAlphaMod(text_textures[j], i);
+            text_box.w = static_cast<int>(780.0 * stats[j].size() / max_size);
+            text_box.x = 400 - text_box.w / 2;
+            text_box.y = 160 + j * text_height;
+            SDL_RenderCopy(renderer, text_textures[j], nullptr, &text_box);
         }
         SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
         SDL_RenderPresent(renderer);
         framerate_last_tick = SDL_GetTicks();
     }
-    SDL_FreeSurface(text_surface);
-    //SDL_Surface *
+    bool keep_open = true;
+    bool switch_stats = false;
+    while (keep_open && !switch_stats) {
+        static SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            switch (event.type) {
+                case SDL_QUIT:
+                    keep_open = false;
+                    break;
+                case SDL_KEYUP:
+                    switch_stats = true;
+            }
+        }
+    }
+    if (switch_stats) {
+        for (int i = 255; i >= 0; i -= 2) {
+            SDL_RenderClear(renderer);
+            SDL_SetTextureAlphaMod(title_texture, i);
+            SDL_RenderCopy(renderer, title_texture, nullptr, &title_box);
+            for (int j = 0; j < n_of_lines; ++j) {
+                SDL_SetTextureAlphaMod(text_textures[j], i);
+                text_box.w = static_cast<int>(780.0 * stats[j].size() / max_size);
+                text_box.x = 400 - text_box.w / 2;
+                text_box.y = 160 + j * text_height;
+                SDL_RenderCopy(renderer, text_textures[j], nullptr, &text_box);
+            }
+            SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
+            SDL_RenderPresent(renderer);
+            framerate_last_tick = SDL_GetTicks();
+        }
+        SDL_DestroyTexture(title_texture);
+        for (SDL_Texture *texture: text_textures) {
+            SDL_DestroyTexture(texture);
+        }
+        text_textures.clear();
+        stats.clear();
+        stats = {
+                "CLOWN SHOOT RATE (shots/s):", "",
+                "KARATEKA SPEED:", "",
+                "KARATEKA SPAWN PERCENTAGE:", "",
+                "AVERAGE NUMBER OF ENEMIES:", ""
+        };
+        stringstream csp_stream, ks_stream, ksr_stream, ane_stream;
+        csp_stream << fixed << setprecision(2) << 1.0;
+        ks_stream << 4;
+        ksr_stream << "50%";
+        ane_stream << 4;
+        for (const Room_adaptations &ra: adaptations) {
+            csp_stream << "->" << fixed << setprecision(2) << 60.0 * ra.clown_shoot_probability;
+            ks_stream << "->" << ra.karateka_average_speed;
+            ksr_stream << "->" << static_cast<int>(round(100 * ra.karateka_probability)) << "%";
+            ane_stream << "->" << ra.average_number_of_enemies;
+        }
+        stats[1] = csp_stream.str();
+        stats[3] = ks_stream.str();
+        stats[5] = ksr_stream.str();
+        stats[7] = ane_stream.str();
+        n_of_lines = stats.size();
+        max_size = max_element(stats.begin(), stats.end(), [](const string &s1, const string &s2) { return s1.size() < s2.size(); })->size();
+        text_height = 600.0 / n_of_lines;
+        surface = TTF_RenderUTF8_Solid(isaac_font, "ADAPTATIONS", SDL_Color{255, 255, 255});
+        title_texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+        for (const string &s: stats) {
+            surface = TTF_RenderUTF8_Solid(standard_font, s.c_str(), SDL_Color{255, 255, 255});
+            text_textures.push_back(SDL_CreateTextureFromSurface(renderer, surface));
+            SDL_FreeSurface(surface);
+        }
+        text_box.h = text_height;
+        for (int i = 0; i <= 255; i += 2) {
+            SDL_RenderClear(renderer);
+            SDL_SetTextureAlphaMod(title_texture, i);
+            SDL_RenderCopy(renderer, title_texture, nullptr, &title_box);
+            for (int j = 0; j < n_of_lines; ++j) {
+                SDL_SetTextureAlphaMod(text_textures[j], i);
+                text_box.w = static_cast<int>(780.0 * stats[j].size() / max_size);
+                text_box.x = 400 - text_box.w / 2;
+                text_box.y = 140 + j * text_height + 20 * (j >> 1);
+                SDL_RenderCopy(renderer, text_textures[j], nullptr, &text_box);
+            }
+            SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
+            SDL_RenderPresent(renderer);
+            framerate_last_tick = SDL_GetTicks();
+        }
+        keep_open = true;
+        switch_stats = false;
+        while (keep_open && !switch_stats) {
+            static SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                switch (event.type) {
+                    case SDL_QUIT:
+                        keep_open = false;
+                        break;
+                    case SDL_KEYUP:
+                        switch_stats = true;
+                }
+            }
+        }
+        if (switch_stats) {
+            for (int i = 255; i >= 0; i -= 2) {
+                SDL_RenderClear(renderer);
+                SDL_SetTextureAlphaMod(title_texture, i);
+                SDL_RenderCopy(renderer, title_texture, nullptr, &title_box);
+                for (int j = 0; j < n_of_lines; ++j) {
+                    SDL_SetTextureAlphaMod(text_textures[j], i);
+                    text_box.w = static_cast<int>(780.0 * stats[j].size() / max_size);
+                    text_box.x = 400 - text_box.w / 2;
+                    text_box.y = 140 + j * text_height + 20 * (j >> 1);
+                    SDL_RenderCopy(renderer, text_textures[j], nullptr, &text_box);
+                }
+                SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
+                SDL_RenderPresent(renderer);
+                framerate_last_tick = SDL_GetTicks();
+            }
+        }
+    }
 }
 
 void Entity::render(SDL_Renderer *renderer, SDL_Texture *texture) const noexcept {
