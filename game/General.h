@@ -88,8 +88,6 @@ struct Floor_data {
 struct Game_stats {
     int karateka_average_speed;
     double clown_shoot_probability;
-    double clown_shot_speed;
-    double clown_shot_dispersion;
 };
 
 class General_handler {
@@ -165,6 +163,8 @@ public:
     void base_render() noexcept;
 
     bool poll_events_and_update_positions() noexcept;
+
+    void initial_timer() noexcept;
 
     void defeat_screen() noexcept;
 

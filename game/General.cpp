@@ -30,10 +30,10 @@ void General_handler::initialize(bool final_room) {
     background_music = Mix_LoadMUS(R"(.\sounds\Background_music.wav)");
     victory_sound = Mix_LoadWAV(R"(.\sounds\Applause.wav)");
     game_over_sound = Mix_LoadWAV(R"(.\sounds\Game_over.wav)");
-    font = TTF_OpenFont("Text_font.ttf", 30);
+    font = TTF_OpenFont("Text_font.ttf", 200);
     protagonist = Entity(vector<int>{400, 400}, 25, 30, 0, PROTAGONIST);
     enemies = {};
-    game_stats = Game_stats(4, 1.0 / 60, 15, 2);
+    game_stats = Game_stats(4, 1.0 / 60);
     floor_data = Floor_data();
     this->final_room = final_room;
     game_time = 0;
@@ -392,8 +392,8 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                         Mix_PlayChannel(-1, karateka_kick_sound, 0);
                         e.current_sprite = protagonist_direction[0] > 0 ? 3 : 4;
                     } else {
-                        e.velocity[0] = static_cast<int>(protagonist_direction[0] * e.movement_average + e.movement_control * gauss(rng));
-                        e.velocity[1] = static_cast<int>(protagonist_direction[1] * e.movement_average + e.movement_control * gauss(rng));
+                        e.velocity[0] = static_cast<int>(round(protagonist_direction[0] * e.movement_average + e.movement_control * gauss(rng)));
+                        e.velocity[1] = static_cast<int>(round(protagonist_direction[1] * e.movement_average + e.movement_control * gauss(rng)));
                         if (sprite_clock[e.id] > 20) {
                             if (e.current_sprite < 2) {
                                 e.current_sprite = 2;
@@ -418,8 +418,8 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                         e.position[0] += e.velocity[0];
                         e.position[1] += e.velocity[1];
                     } else if (karateka_kick_animation[e.id] < 20) {
-                        e.velocity[0] = static_cast<int>(protagonist_direction[0] * 20);
-                        e.velocity[1] = static_cast<int>(protagonist_direction[1] * 20);
+                        e.velocity[0] = static_cast<int>(round(protagonist_direction[0] * 20));
+                        e.velocity[1] = static_cast<int>(round(protagonist_direction[1] * 20));
                         e.current_sprite = protagonist_direction[0] > 0 ? 3 : 4;
                     }
                 }
@@ -430,8 +430,8 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                 } else if (clown_explosion[e.id] == 0) {
                     if (clown_charge[e.id] != 0) {
                         --clown_charge[e.id];
-                        e.velocity[0] = static_cast<int>(6 * protagonist_direction[0]);
-                        e.velocity[1] = static_cast<int>(6 * protagonist_direction[1]);
+                        e.velocity[0] = static_cast<int>(round(6 * protagonist_direction[0]));
+                        e.velocity[1] = static_cast<int>(round(6 * protagonist_direction[1]));
                         avoid_wall_collision(e);
                         e.position[0] += e.velocity[0];
                         e.position[1] += e.velocity[1];
@@ -454,20 +454,18 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                         if (uniform_real(rng) < game_stats.clown_shoot_probability) {
                             ++floor_data.enemy_shots_fired;
                             enemy_shots.emplace_back(e.position, 5, 0, ++id_counter, ENEMY_SHOT);
-                            enemy_shots.rbegin()->velocity[0] = static_cast<int>(protagonist_direction[0] * game_stats.clown_shot_speed +
-                                                                                 game_stats.clown_shot_dispersion * gauss(rng));
-                            enemy_shots.rbegin()->velocity[1] = static_cast<int>(protagonist_direction[1] * game_stats.clown_shot_speed +
-                                                                                 game_stats.clown_shot_dispersion * gauss(rng));
+                            enemy_shots.rbegin()->velocity[0] = static_cast<int>(round(protagonist_direction[0] * 15 + 2 * gauss(rng)));
+                            enemy_shots.rbegin()->velocity[1] = static_cast<int>(round(protagonist_direction[1] * 15 + 2 * gauss(rng)));
                             sprite_clock[e.id] = 20;
                             e.current_sprite = 1;
                         } else if (room_time > 150 && uniform_real(rng) < game_stats.clown_shoot_probability * .1) {
                             clown_charge[e.id] = 120;
                             Mix_PlayChannel(-1, clown_charge_sound, 0);
-                            e.velocity[0] = static_cast<int>(6 * protagonist_direction[0]);
-                            e.velocity[0] = static_cast<int>(6 * protagonist_direction[1]);
+                            e.velocity[0] = static_cast<int>(round(6 * protagonist_direction[0]));
+                            e.velocity[0] = static_cast<int>(round(6 * protagonist_direction[1]));
                         } else if (uniform_real(rng) < e.movement_control) {
-                            e.velocity[0] = static_cast<int>(gauss(rng)) + (2 * coin_flip(rng) - 1) * e.movement_average;
-                            e.velocity[1] = static_cast<int>(gauss(rng)) + (2 * coin_flip(rng) - 1) * e.movement_average;
+                            e.velocity[0] = static_cast<int>(round(gauss(rng))) + (2 * coin_flip(rng) - 1) * e.movement_average;
+                            e.velocity[1] = static_cast<int>(round(gauss(rng))) + (2 * coin_flip(rng) - 1) * e.movement_average;
                         }
                         avoid_wall_collision(e);
                         e.position[0] += e.velocity[0];
@@ -605,6 +603,35 @@ bool General_handler::avoid_wall_collision(Entity &entity) {
         }
     }
     return collision;
+}
+
+void General_handler::initial_timer() noexcept {
+    SDL_Rect text_box = SDL_Rect(200, 200, 300, 300);
+    for (int i = 3; i > 0; --i) {
+        SDL_Surface *text_surface = TTF_RenderText_Solid(font, to_string(i).c_str(), SDL_Color{0, 0, 0});
+        SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+        SDL_FreeSurface(text_surface);
+        for (int i = 0; i < 60; ++i) {
+            SDL_RenderClear(renderer);
+            static auto map_crop = SDL_Rect(0, 0, 50, 50);
+            for (int i = 0; i < 16; ++i) {
+                for (int j = 0; j < 16; ++j) {
+                    map_crop.x = 50 * i;
+                    map_crop.y = 50 * j;
+                    SDL_RenderCopy(renderer, sprite_map[room[i][j] ? WALL : EMPTY_BOX][0], nullptr, &map_crop);
+                }
+            }
+            protagonist.render(renderer, sprite_map[PROTAGONIST][0]);
+            for (const Enemy &e : enemies) {
+                e.render(renderer, sprite_map[e.type][0]);
+            }
+            SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
+            SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
+            SDL_RenderPresent(renderer);
+            framerate_last_tick = SDL_GetTicks();
+        }
+        SDL_DestroyTexture(text_texture);
+    }
 }
 
 void General_handler::victory_screen() noexcept {

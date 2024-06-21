@@ -33,6 +33,7 @@ target_link_libraries (${CMAKE_PROJECT_NAME}
 include_directories(${CMAKE_SOURCE_DIR}/game)
 
 add_compile_options(-Wall)
+add_compile_options(-x=c++20)
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
     add_compile_options(-o3)
 elseif (${CMAKE_BUILD_TYPE} STREQUAL "Debug")

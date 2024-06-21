@@ -53,6 +53,7 @@ void Game_handler::game() {
     bool keep_open = true;
     int prev_room_hp = 30;
     Mix_PlayMusic(handler.background_music, -1);
+    handler.initial_timer();
     while (keep_open) {
         // base loop
         while (keep_open && (!handler.enemies.empty() ||
@@ -66,8 +67,13 @@ void Game_handler::game() {
         if (!keep_open) {
             adapt(prev_room_hp);
             prev_room_hp = handler.protagonist.hp;
+            Mix_HaltMusic();
             handler.room_change_animation(vector<vector<bool>>{}, vector<Enemy>{}, NONE);
-            handler.defeat_screen();
+            if (handler.protagonist.hp <= 0) {
+                handler.defeat_screen();
+            } else {
+                handler.stats_screen();
+            }
         } else {
             // if player took the trapdoor
             if (handler.final_room && abs(handler.protagonist.position[0] - 400) < 25 && abs(handler.protagonist.position[1] - 400) < 25) {
