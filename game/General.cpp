@@ -1,3 +1,4 @@
+#include <bits/stdc++.h>
 #include "General.h"
 
 void General_handler::initialize(bool final_room) {
@@ -5,7 +6,8 @@ void General_handler::initialize(bool final_room) {
     SDL_Init(SDL_INIT_VIDEO);
     IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
     Mix_Init(0);
-    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024);
+    Mix_OpenAudio(48000, MIX_DEFAULT_FORMAT, 2, 1024);
+    TTF_Init();
     SDL_CreateWindowAndRenderer(800, 800, 0, &window, &renderer);
     sprite_map[WALL].push_back(IMG_LoadTexture(renderer, R"(.\sprites\Brick_wall.jpg)"));
     sprite_map[EMPTY_BOX].push_back(IMG_LoadTexture(renderer, R"(.\sprites\Yellow_texture.jpg)"));
@@ -26,15 +28,20 @@ void General_handler::initialize(bool final_room) {
     clown_charge_sound = Mix_LoadWAV(R"(.\sounds\Clown_charge_sound.wav)");
     clown_explosion_sound = Mix_LoadWAV(R"(.\sounds\Clown_explosion_sound.wav)");
     background_music = Mix_LoadMUS(R"(.\sounds\Background_music.wav)");
-    //font = TTF_OpenFont("IsaacGame", 30);
+    victory_sound = Mix_LoadWAV(R"(.\sounds\Applause.wav)");
+    game_over_sound = Mix_LoadWAV(R"(.\sounds\Game_over.wav)");
+    font = TTF_OpenFont("Text_font.ttf", 30);
     protagonist = Entity(vector<int>{400, 400}, 25, 30, 0, PROTAGONIST);
     enemies = {};
     game_stats = Game_stats(4, 1.0 / 60, 15, 2);
     floor_data = Floor_data();
     this->final_room = final_room;
+    game_time = 0;
+    room_time = 0;
 }
 
 void General_handler::room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Direction direction) {
+    room_time = 0;
     constexpr double alpha_tick = 1.5;
     constexpr double slide_tick = 10;
     if (room.empty()) {
@@ -80,6 +87,13 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
             for (const Entity &e : enemies) {
                 SDL_SetTextureAlphaMod(sprite_map[e.type][e.current_sprite], i);
             }
+            for (const Entity &e : enemy_shots) {
+                SDL_SetTextureAlphaMod(sprite_map[e.type][0], 255);
+            }
+            for (const Entity &e : protagonist_shots) {
+                SDL_SetTextureAlphaMod(sprite_map[e.type][0], 255);
+            }
+            SDL_SetTextureAlphaMod(explosion_texture, i);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             base_render();
         }
@@ -95,6 +109,7 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
         for (const Entity &e : protagonist_shots) {
             SDL_SetTextureAlphaMod(sprite_map[e.type][0], 255);
         }
+        SDL_SetTextureAlphaMod(explosion_texture, 255);
         room = new_room;
         enemies = new_room_enemies;
         return;
@@ -216,6 +231,8 @@ void General_handler::shifted_render(const vector<vector<bool>> &new_room, const
 }
 
 bool General_handler::poll_events_and_update_positions() noexcept {
+    ++room_time;
+    ++game_time;
     static SDL_Event event;
     Direction shoot = NONE;
     bool swing = false;
@@ -443,7 +460,7 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                                                                                  game_stats.clown_shot_dispersion * gauss(rng));
                             sprite_clock[e.id] = 20;
                             e.current_sprite = 1;
-                        } else if (uniform_real(rng) < game_stats.clown_shoot_probability * .1) {
+                        } else if (room_time > 150 && uniform_real(rng) < game_stats.clown_shoot_probability * .1) {
                             clown_charge[e.id] = 120;
                             Mix_PlayChannel(-1, clown_charge_sound, 0);
                             e.velocity[0] = static_cast<int>(6 * protagonist_direction[0]);
@@ -590,26 +607,74 @@ bool General_handler::avoid_wall_collision(Entity &entity) {
     return collision;
 }
 
-void General_handler::victory_screen() const noexcept {
-    //SDL_Surface *
-}
-
-void General_handler::defeat_screen() const noexcept {
-    /*SDL_Surface *text_surface = TTF_RenderText_Solid(font, "GAME OVER", SDL_Color{255, 255, 255});
+void General_handler::victory_screen() noexcept {
+    Mix_HaltMusic();
+    Mix_PlayChannel(-1, victory_sound, 0);
+    SDL_Surface *text_surface = TTF_RenderText_Solid(font, "YOU WIN!", SDL_Color{255, 255, 255});
     SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
-    SDL_FreeSurface(text_surface);
     SDL_SetTextureBlendMode(text_texture, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     const SDL_Rect text_box = SDL_Rect(50, 300, 700, 200);
-    for (int i = 0; i <= 255; i += 2) {
-        SDL_SetTextureAlphaMod(text_texture, i);
+    for (int i = 0; i <= 255; i += 1) {
         SDL_RenderClear(renderer);
+        SDL_SetTextureAlphaMod(text_texture, i);
         SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
+        SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
         SDL_RenderPresent(renderer);
+        framerate_last_tick = SDL_GetTicks();
     }
-    stats_screen();*/
+    SDL_FreeSurface(text_surface);
+    stats_screen();
 }
 
-void General_handler::stats_screen() const noexcept {
+void General_handler::defeat_screen() noexcept {
+    Mix_HaltMusic();
+    int channel = Mix_PlayChannel(-1, game_over_sound, 0);
+    SDL_Surface *text_surface = TTF_RenderText_Solid(font, "GAME OVER", SDL_Color{255, 255, 255});
+    SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+    SDL_SetTextureBlendMode(text_texture, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    const SDL_Rect text_box = SDL_Rect(50, 300, 700, 200);
+    for (int i = 0; i <= 255; i += 1) {
+        SDL_RenderClear(renderer);
+        SDL_SetTextureAlphaMod(text_texture, i);
+        SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
+        SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
+        SDL_RenderPresent(renderer);
+        framerate_last_tick = SDL_GetTicks();
+    }
+    Mix_HaltChannel(channel);
+    SDL_FreeSurface(text_surface);
+    stats_screen();
+}
+
+void General_handler::stats_screen() noexcept {
+    SDL_Surface *text_surface = TTF_RenderText_Solid(font, "STATS", SDL_Color{255, 255, 255});
+    SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+    SDL_SetTextureBlendMode(text_texture, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    const SDL_Rect text_box = SDL_Rect(50, 300, 700, 200);
+    for (int i = 0; i <= 255; i += 1) {
+        SDL_RenderClear(renderer);
+        SDL_SetTextureAlphaMod(text_texture, i);
+        SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
+        SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
+        SDL_RenderPresent(renderer);
+        framerate_last_tick = SDL_GetTicks();
+    }
+    bool keep_open = true;
+    while(keep_open) {
+        static SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_q)) {
+                keep_open = false;
+            }
+        }
+        SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
+        SDL_RenderPresent(renderer);
+        framerate_last_tick = SDL_GetTicks();
+    }
+    SDL_FreeSurface(text_surface);
     //SDL_Surface *
 }
 

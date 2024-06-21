@@ -1,9 +1,9 @@
+#include <bits/stdc++.h>
 #include "SDL.h"
 #include "SDL_render.h"
 #include "SDL_image.h"
 #include "SDL_mixer.h"
-//#include "SDL_ttf.h"
-#include "bits/stdc++.h"
+#include "SDL_ttf.h"
 
 #ifndef SS_GAME_MAP_H
 
@@ -83,16 +83,6 @@ struct Floor_data {
     int enemy_shots_fired{};
     int enemy_shots_hit{};
     int enemy_contact_hits{};
-
-    void reset() {
-        protagonist_shots_fired = 0;
-        protagonist_shots_hit = 0;
-        protagonist_swings = 0;
-        protagonist_swings_hit = 0;
-        enemy_shots_fired = 0;
-        enemy_shots_hit = 0;
-        enemy_contact_hits = 0;
-    }
 };
 
 struct Game_stats {
@@ -121,8 +111,10 @@ class General_handler {
     Mix_Chunk *karateka_kick_sound{};
     Mix_Chunk *clown_charge_sound{};
     Mix_Chunk *clown_explosion_sound{};
+    Mix_Chunk *victory_sound{};
+    Mix_Chunk *game_over_sound{};
 
-    //TTF_Font *font;
+    TTF_Font *font;
 
     mt19937_64 rng;
     normal_distribution<double> gauss = normal_distribution<double>();
@@ -139,6 +131,8 @@ class General_handler {
     bool collide(const map<int, vector<int>> &previous_positions, const Entity &entity1, const Entity &entity2);
 public:
     int id_counter = 0;
+    int game_time;
+    int room_time;
     Entity protagonist;
     vector<Enemy> enemies{};
     bool final_room{};
@@ -159,6 +153,9 @@ public:
         Mix_FreeChunk(clown_explosion_sound);
         Mix_FreeChunk(clown_charge_sound);
         Mix_FreeChunk(karateka_kick_sound);
+        Mix_FreeChunk(victory_sound);
+        Mix_FreeChunk(game_over_sound);
+        TTF_CloseFont(font);
     }
 
     void initialize(bool final_room);
@@ -169,11 +166,11 @@ public:
 
     bool poll_events_and_update_positions() noexcept;
 
-    void defeat_screen() const noexcept;
+    void defeat_screen() noexcept;
 
-    void victory_screen() const noexcept;
+    void victory_screen() noexcept;
 
-    void stats_screen() const noexcept;
+    void stats_screen() noexcept;
 };
 
 double line_point_distance(int *line, const vector<int> &point);

@@ -105,7 +105,6 @@ void Game_handler::game() {
             }
         }
     }
-    Mix_HaltMusic();
 }
 
 vector<int> Game_handler::build_floor() {
@@ -200,18 +199,6 @@ vector<vector<bool>> Game_handler::build_room(const vector<Direction> &direction
 }
 
 void Game_handler::adapt(int prev_room_hp) {
-    file.open("game_stats.txt", ios::out | ios::app);
-    file << format("{},{},{},{},{},{},{},{}\n",
-                   handler.protagonist.hp,
-                   handler.floor_data.protagonist_shots_fired,
-                   handler.floor_data.protagonist_shots_hit,
-                   handler.floor_data.protagonist_swings,
-                   handler.floor_data.protagonist_swings_hit,
-                   handler.floor_data.enemy_shots_fired,
-                   handler.floor_data.enemy_shots_hit,
-                   handler.floor_data.enemy_contact_hits
-    );
-    file.close();
     // relevant stats
     double enemy_shot_precision = handler.floor_data.enemy_shots_hit / max(handler.floor_data.enemy_shots_fired, 1);
     double contact_hit_relevance = 3 * handler.floor_data.enemy_contact_hits / max(30 - handler.protagonist.hp, 3);
