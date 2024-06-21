@@ -249,11 +249,11 @@ bool General_handler::poll_events_and_update_positions() noexcept {
                     break;
                 case SDLK_k:
                     // instakill button for testing
-                    enemies.clear();
+                    //enemies.clear();
                     break;
                 case SDLK_j:
                     // instadeath button for testing
-                    protagonist.hp = 0;
+                    //protagonist.hp = 0;
                 case SDLK_q:
                     if (pause) {
                         return false;
