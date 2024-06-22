@@ -649,23 +649,31 @@ void General_handler::victory_screen() noexcept {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     const SDL_Rect text_box = SDL_Rect(50, 300, 700, 200);
     SDL_Event event;
-    for (int i = 0; i <= 255; i += 1) {
+    bool keep_open = true;
+    for (int i = 0; i <= 255 && keep_open; i += 1) {
         SDL_RenderClear(renderer);
         SDL_SetTextureAlphaMod(text_texture, i);
         SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
         SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
         SDL_RenderPresent(renderer);
         framerate_last_tick = SDL_GetTicks();
-        while(SDL_PollEvent(&event)) {}
+        while(SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                keep_open = false;
+            }
+        }
     }
-    for (int i = 255; i >= 0; i -= 1) {
+    for (int i = 255; i >= 0 && keep_open; i -= 1) {
         SDL_RenderClear(renderer);
         SDL_SetTextureAlphaMod(text_texture, i);
         SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
         SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
         SDL_RenderPresent(renderer);
         framerate_last_tick = SDL_GetTicks();
-        while(SDL_PollEvent(&event)) {}
+        while(SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                keep_open = false;
+            }}
     }
     SDL_FreeSurface(text_surface);
     stats_screen();
@@ -680,23 +688,30 @@ void General_handler::defeat_screen() noexcept {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     const SDL_Rect text_box = SDL_Rect(50, 300, 700, 200);
     SDL_Event event;
-    for (int i = 0; i <= 255; i += 1) {
+    bool keep_open = true;
+    for (int i = 0; i <= 255 && keep_open; i += 1) {
         SDL_RenderClear(renderer);
         SDL_SetTextureAlphaMod(text_texture, i);
         SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
         SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
         SDL_RenderPresent(renderer);
         framerate_last_tick = SDL_GetTicks();
-        while(SDL_PollEvent(&event)) {}
+        while(SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                keep_open = false;
+            }}
     }
-    for (int i = 255; i >= 0; i -= 1) {
+    for (int i = 255; i >= 0 && keep_open; i -= 1) {
         SDL_RenderClear(renderer);
         SDL_SetTextureAlphaMod(text_texture, i);
         SDL_RenderCopy(renderer, text_texture, nullptr, &text_box);
         SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
         SDL_RenderPresent(renderer);
         framerate_last_tick = SDL_GetTicks();
-        while(SDL_PollEvent(&event)) {}
+        while(SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                keep_open = false;
+            }}
     }
     SDL_FreeSurface(text_surface);
     stats_screen();
@@ -731,7 +746,9 @@ void General_handler::stats_screen() noexcept {
     static SDL_Rect text_box = SDL_Rect();
     static const SDL_Rect title_box = SDL_Rect(10, 10, 780, 100);
     text_box.h = text_height;
-    for (int i = 0; i <= 255; i += 2) {
+    SDL_Event event;
+    bool keep_open = true;
+    for (int i = 0; i <= 255 && keep_open; i += 2) {
         SDL_RenderClear(renderer);
         SDL_SetTextureAlphaMod(title_texture, i);
         SDL_RenderCopy(renderer, title_texture, nullptr, &title_box);
@@ -745,11 +762,13 @@ void General_handler::stats_screen() noexcept {
         SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
         SDL_RenderPresent(renderer);
         framerate_last_tick = SDL_GetTicks();
+        while(SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                keep_open = false;
+            }}
     }
-    bool keep_open = true;
     bool switch_stats = false;
     while (keep_open && !switch_stats) {
-        static SDL_Event event;
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_QUIT:
@@ -761,7 +780,7 @@ void General_handler::stats_screen() noexcept {
         }
     }
     if (switch_stats) {
-        for (int i = 255; i >= 0; i -= 2) {
+        for (int i = 255; i >= 0 && keep_open; i -= 2) {
             SDL_RenderClear(renderer);
             SDL_SetTextureAlphaMod(title_texture, i);
             SDL_RenderCopy(renderer, title_texture, nullptr, &title_box);
@@ -775,6 +794,10 @@ void General_handler::stats_screen() noexcept {
             SDL_Delay(max(100.0 / 6.0 - static_cast<double>(SDL_GetTicks() - framerate_last_tick), 0.0));
             SDL_RenderPresent(renderer);
             framerate_last_tick = SDL_GetTicks();
+            while(SDL_PollEvent(&event)) {
+                if (event.type == SDL_QUIT) {
+                    keep_open = false;
+                }}
         }
         SDL_DestroyTexture(title_texture);
         for (SDL_Texture *texture: text_textures) {

@@ -66,11 +66,9 @@ void Game_handler::game() {
         // if player is dead or game was quitted
         if (!keep_open) {
             Mix_HaltMusic();
-            handler.room_change_animation(vector<vector<bool>>{}, enemies, NONE);
             if (handler.protagonist.hp <= 0) {
+                handler.room_change_animation(vector<vector<bool>>{}, enemies, NONE);
                 handler.defeat_screen();
-            } else {
-                handler.stats_screen();
             }
         } else {
             // if player took the trapdoor
