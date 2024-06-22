@@ -214,8 +214,8 @@ void Game_handler::adapt(int prev_room_hp) {
             static_cast<double>(max(handler.floor_data.protagonist_shots_fired + handler.floor_data.protagonist_swings_hit, 1));
 
     // upgraded values
-    double new_clown_shoot_probability = min(max(handler.game_stats.clown_shoot_probability - min(max(enemy_shot_relevance - .75, -.25), .25) / 30, 1.0 / 360), 1.0 / 30);
-    int new_karateka_average_speed = min(max(handler.game_stats.karateka_average_speed - static_cast<int>(round(4 * min(max(contact_hit_relevance - .75, -.25), .25))), 2), 7);
+    double new_clown_shoot_probability = min(max(handler.game_stats.clown_shoot_probability - min(max(enemy_shot_relevance - .5, -.25), .25) / 30, 1.0 / 360), 1.0 / 30);
+    int new_karateka_average_speed = min(max(handler.game_stats.karateka_average_speed - static_cast<int>(round(4 * min(max(contact_hit_relevance - 1.25, -.25), .25))), 2), 7);
     double new_karateka_probability = min(max(karateka_probability - max(min(protagonist_swing_preference - .2, .1), -.1), 0.25), .75);
     int new_average_num_of_enemies = min(max(average_num_of_enemies + 2 * (handler.protagonist.hp > prev_room_hp) - 1 + (handler.protagonist.hp > 20) -
             (handler.protagonist.hp < prev_room_hp - 10) - (handler.protagonist.hp <= 10), 2), 8);
