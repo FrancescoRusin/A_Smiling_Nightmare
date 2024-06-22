@@ -15,7 +15,7 @@ class Game_handler {
     uniform_real_distribution<double> uniform_unit = uniform_real_distribution<double>();
 public:
     Game_handler() {
-        rng = mt19937_64(duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count());
+        rng = mt19937_64(duration_cast<chrono::nanoseconds>(chrono::system_clock::now().time_since_epoch()).count());
     }
 
     void game();

@@ -56,7 +56,7 @@ void General_handler::room_change_animation(const vector<vector<bool>> &new_room
             SDL_SetTextureBlendMode(sprite_map[e.type][0], SDL_BLENDMODE_BLEND);
         }
         for (double i = 0; i <= 255; i += alpha_tick) {
-            SDL_SetTextureAlphaMod(sprite_map[WALL][0], i);
+            SDL_SetTextureAlphaMod(sprite_map[WALL][0], i); // NOLINT(*-narrowing-conversions)
             SDL_SetTextureAlphaMod(sprite_map[EMPTY_BOX][0], i);
             SDL_SetTextureAlphaMod(sprite_map[PROTAGONIST][0], i);
             for (const Entity &e : enemies) {
@@ -211,6 +211,8 @@ void General_handler::shifted_render(const vector<vector<bool>> &new_room, const
             tick[1] = 0;
             new_map_crop[0] = -800;
             new_map_crop[1] = 0;
+            break;
+        case NONE:
             break;
     }
     for (int i = 0; i < 16; ++i) {
@@ -559,7 +561,7 @@ bool General_handler::poll_events_and_update_positions() noexcept {
     return protagonist.hp > 0;
 }
 
-bool General_handler::collide(const map<int, vector<int>> &previous_positions, const Entity &entity1, const Entity &entity2) {
+bool General_handler::collide(const map<int, vector<int>> &previous_positions, const Entity &entity1, const Entity &entity2) noexcept {
     vector<double> distances(4);
     distances[0] = point_point_distance(entity1.position, entity2.position);
     distances[1] = point_point_distance(entity1.position, previous_positions.at(entity2.id));
@@ -856,7 +858,6 @@ void General_handler::stats_screen() noexcept {
         keep_open = true;
         switch_stats = false;
         while (keep_open && !switch_stats) {
-            static SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 switch (event.type) {
                     case SDL_QUIT:
@@ -890,21 +891,6 @@ void General_handler::stats_screen() noexcept {
 void Entity::render(SDL_Renderer *renderer, SDL_Texture *texture) const noexcept {
     const auto mob_crop = SDL_Rect(position[0] - radius, position[1] - radius, 2 * radius, 2 * radius);
     SDL_RenderCopy(renderer, texture, nullptr, &mob_crop);
-}
-
-double line_point_distance(int *line, const vector<int> &point) {
-    return abs(line[0] * point[0] + line[1] * point[1] + line[2]) / sqrt(point[0] * point[0] + point[1] * point[1]);
-}
-
-vector<double> line_line_intersection(int *line1, int *line2) {
-    int cramer_det = line1[0] * line2[1] - line1[1] * line2[0];
-    if (cramer_det == 0) {
-        return vector<double>{-1, -1};
-    }
-    return vector<double>{
-            static_cast<double>(line2[1] * line1[2] - line2[2] * line1[1]) / cramer_det,
-            static_cast<double>(line2[2] * line1[0] - line2[0] * line1[2]) / cramer_det
-    };
 }
 
 double point_point_distance(const vector<int> &p1, const vector<int> &p2) {

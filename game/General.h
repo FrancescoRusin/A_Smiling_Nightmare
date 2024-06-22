@@ -26,7 +26,7 @@ struct Entity {
     int8_t hit_tick{};
     int8_t action_tick{};
     Sprite_type type;
-    int current_sprite;
+    int current_sprite{};
 
     Entity() : type(EMPTY_BOX) {};
 
@@ -120,8 +120,8 @@ class General_handler {
     Mix_Chunk *victory_sound{};
     Mix_Chunk *game_over_sound{};
 
-    TTF_Font *isaac_font;
-    TTF_Font *standard_font;
+    TTF_Font *isaac_font{};
+    TTF_Font *standard_font{};
 
     mt19937_64 rng;
     normal_distribution<double> gauss = normal_distribution<double>();
@@ -135,11 +135,11 @@ class General_handler {
 
     bool avoid_wall_collision(Entity &entity);
 
-    bool collide(const map<int, vector<int>> &previous_positions, const Entity &entity1, const Entity &entity2);
+    static bool collide(const map<int, vector<int>> &previous_positions, const Entity &entity1, const Entity &entity2) noexcept;
 public:
     int id_counter = 0;
-    int game_time;
-    int room_time;
+    int game_time{};
+    int room_time{};
     int total_n_of_enemies = 0;
     int total_n_of_karateka = 0;
     Entity protagonist;
@@ -185,8 +185,6 @@ public:
     void stats_screen() noexcept;
 };
 
-double line_point_distance(int *line, const vector<int> &point);
-vector<double> line_line_intersection(int *line1, int *line2);
 double point_point_distance(const vector<int> &p1, const vector<int> &p2);
 
 #define SS_GAME_MAP_H
