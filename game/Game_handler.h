@@ -14,21 +14,19 @@ class Game_handler {
 
     uniform_real_distribution<double> uniform_unit = uniform_real_distribution<double>();
 public:
-    Game_handler() {
+    Game_handler() noexcept {
         rng = mt19937_64(duration_cast<chrono::nanoseconds>(chrono::system_clock::now().time_since_epoch()).count());
     }
 
-    void game();
+    void game() noexcept;
 
-    vector<int> build_floor();
+    vector<int> build_floor() const noexcept;
 
-    vector<vector<bool>> build_room(const vector<Direction> &directions);
+    vector<vector<bool>> build_room(const vector<Direction> &directions) const noexcept;
 
-    vector<Enemy> build_enemies(const vector<vector<bool>> &room);
+    vector<Enemy> build_enemies(const vector<vector<bool>> &room) const noexcept;
 
     void adapt(int prev_room_hp);
 };
-
-vector<int> find_neighbors(int r);
 
 #endif //SS_GAME_GAME_HANDLER_H

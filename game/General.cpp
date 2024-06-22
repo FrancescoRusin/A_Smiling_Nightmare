@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
 #include "General.h"
 
-void General_handler::initialize(bool final_room) {
+void General_handler::initialize(bool final_room) noexcept {
     rng = mt19937_64(duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count());
     SDL_Init(SDL_INIT_VIDEO);
     IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
@@ -42,7 +42,7 @@ void General_handler::initialize(bool final_room) {
     room_time = 0;
 }
 
-void General_handler::room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Direction direction) {
+void General_handler::room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Direction direction) noexcept {
     room_time = 0;
     constexpr double alpha_tick = 1.5;
     constexpr double slide_tick = 10;
@@ -570,7 +570,7 @@ bool General_handler::collide(const map<int, vector<int>> &previous_positions, c
     return (*min_element(distances.begin(), distances.end())) < (entity1.radius + entity2.radius);
 }
 
-bool General_handler::avoid_wall_collision(Entity &entity) {
+bool General_handler::avoid_wall_collision(Entity &entity) noexcept {
     bool collision = false;
     vector<int> position_cell{entity.position[0] / 50, entity.position[1] / 50};
     if (position_cell[0] < 0 || position_cell[0] > 15 || position_cell[1] < 0 || position_cell[1] > 15) {
@@ -888,11 +888,11 @@ void General_handler::stats_screen() noexcept {
     }
 }
 
-void Entity::render(SDL_Renderer *renderer, SDL_Texture *texture) const noexcept {
+inline void Entity::render(SDL_Renderer *renderer, SDL_Texture *texture) const noexcept {
     const auto mob_crop = SDL_Rect(position[0] - radius, position[1] - radius, 2 * radius, 2 * radius);
     SDL_RenderCopy(renderer, texture, nullptr, &mob_crop);
 }
 
-double point_point_distance(const vector<int> &p1, const vector<int> &p2) {
+inline double point_point_distance(const vector<int> &p1, const vector<int> &p2) noexcept {
     return sqrt((p1[0] - p2[0]) * (p1[0] - p2[0]) + (p1[1] - p2[1]) * (p1[1] - p2[1]));
 }

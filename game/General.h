@@ -133,7 +133,7 @@ class General_handler {
 
     void shifted_render(const vector<vector<bool>> &new_room, int shift, Direction direction) noexcept;
 
-    bool avoid_wall_collision(Entity &entity);
+    bool avoid_wall_collision(Entity &entity) noexcept;
 
     static bool collide(const map<int, vector<int>> &previous_positions, const Entity &entity1, const Entity &entity2) noexcept;
 public:
@@ -168,9 +168,9 @@ public:
         TTF_CloseFont(isaac_font);
     }
 
-    void initialize(bool final_room);
+    void initialize(bool final_room) noexcept;
 
-    void room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Direction);
+    void room_change_animation(const vector<vector<bool>> &new_room, const vector<Enemy> &new_room_enemies, Direction) noexcept;
 
     void base_render() noexcept;
 
@@ -185,7 +185,7 @@ public:
     void stats_screen() noexcept;
 };
 
-double point_point_distance(const vector<int> &p1, const vector<int> &p2);
+double point_point_distance(const vector<int> &p1, const vector<int> &p2) noexcept;
 
 #define SS_GAME_MAP_H
 

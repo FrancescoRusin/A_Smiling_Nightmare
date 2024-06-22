@@ -1,6 +1,6 @@
 #include "Game_handler.h"
 
-vector<int> find_neighbors(int r) {
+inline vector<int> find_neighbors(int r) noexcept {
     vector<int> neighbors{};
     if (r > 8) {
         neighbors.push_back(r - 8);
@@ -17,7 +17,7 @@ vector<int> find_neighbors(int r) {
     return neighbors;
 }
 
-vector<Direction> find_closed_directions(const vector<int> &floor, int room_number) {
+inline vector<Direction> find_closed_directions(const vector<int> &floor, int room_number) noexcept {
     vector<Direction> directions(0);
     if (find(floor.begin(), floor.end(), room_number - 8) == floor.end()) {
         directions.push_back(UP);
@@ -34,7 +34,7 @@ vector<Direction> find_closed_directions(const vector<int> &floor, int room_numb
     return directions;
 }
 
-void Game_handler::game() {
+void Game_handler::game() noexcept {
     uniform_int_distribution<int> final_room_extractor = uniform_int_distribution<int>(0, 7);
     handler.initialize(false);
     int room_number = 36;
@@ -109,7 +109,7 @@ void Game_handler::game() {
     }
 }
 
-vector<int> Game_handler::build_floor() {
+vector<int> Game_handler::build_floor() const noexcept {
     uniform_int_distribution<int> uniform4 = uniform_int_distribution<int>(0, 4);
     uniform_real_distribution<double> uniform_unit = uniform_real_distribution<double>();
     vector<int> queue(1, 36);
@@ -134,7 +134,7 @@ vector<int> Game_handler::build_floor() {
     return reachable;
 }
 
-vector<Enemy> Game_handler::build_enemies(const vector<vector<bool>> &room) {
+vector<Enemy> Game_handler::build_enemies(const vector<vector<bool>> &room) const noexcept {
     uniform_int_distribution<int> uniform800 = uniform_int_distribution<int>(0, 799);
     const int n_of_enemies = max(average_num_of_enemies + static_cast<int>(round(normal_distribution<double>()(rng))), 1);
     vector<Enemy> enemies(0);
@@ -158,7 +158,7 @@ vector<Enemy> Game_handler::build_enemies(const vector<vector<bool>> &room) {
     return enemies;
 }
 
-vector<vector<bool>> Game_handler::build_room(const vector<Direction> &directions) {
+vector<vector<bool>> Game_handler::build_room(const vector<Direction> &directions) const noexcept {
     vector<vector<bool>> room(16, vector<bool>(16));
     for (const Direction &direction: directions) {
         switch (direction) {
