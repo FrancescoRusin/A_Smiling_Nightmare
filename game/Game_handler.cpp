@@ -134,7 +134,7 @@ vector<int> Game_handler::build_floor() const noexcept {
     return reachable;
 }
 
-vector<Enemy> Game_handler::build_enemies(const vector<vector<bool>> &room) const noexcept {
+vector<Enemy> Game_handler::build_enemies(const vector<vector<bool>> &room) noexcept {
     uniform_int_distribution<int> uniform800 = uniform_int_distribution<int>(0, 799);
     const int n_of_enemies = max(average_num_of_enemies + static_cast<int>(round(normal_distribution<double>()(rng))), 1);
     vector<Enemy> enemies(0);

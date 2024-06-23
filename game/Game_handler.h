@@ -24,7 +24,7 @@ public:
 
     vector<vector<bool>> build_room(const vector<Direction> &directions) const noexcept;
 
-    vector<Enemy> build_enemies(const vector<vector<bool>> &room) const noexcept;
+    vector<Enemy> build_enemies(const vector<vector<bool>> &room) noexcept;
 
     void adapt(int prev_room_hp);
 };
