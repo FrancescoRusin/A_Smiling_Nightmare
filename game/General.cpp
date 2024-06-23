@@ -888,11 +888,11 @@ void General_handler::stats_screen() noexcept {
     }
 }
 
-inline void Entity::render(SDL_Renderer *renderer, SDL_Texture *texture) const noexcept {
+void Entity::render(SDL_Renderer *renderer, SDL_Texture *texture) const noexcept {
     const auto mob_crop = SDL_Rect(position[0] - radius, position[1] - radius, 2 * radius, 2 * radius);
     SDL_RenderCopy(renderer, texture, nullptr, &mob_crop);
 }
 
-inline double point_point_distance(const vector<int> &p1, const vector<int> &p2) noexcept {
+double point_point_distance(const vector<int> &p1, const vector<int> &p2) noexcept {
     return sqrt((p1[0] - p2[0]) * (p1[0] - p2[0]) + (p1[1] - p2[1]) * (p1[1] - p2[1]));
 }

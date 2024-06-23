@@ -32,7 +32,7 @@ struct Entity {
 
     Entity(const Entity &entity) = default;
 
-    Entity(const vector<int> &position, int radius, int hp, int id, Sprite_type type) {
+    Entity(const vector<int> &position, int radius, int hp, int id, Sprite_type type) noexcept {
         this->position[0] = position[0];
         this->position[1] = position[1];
         this->velocity[0] = this->velocity[1] = 0;
@@ -44,7 +44,7 @@ struct Entity {
         this->current_sprite = 0;
     }
 
-    Entity& operator=(const Entity &entity) {
+    Entity& operator=(const Entity &entity) noexcept {
         this->position[0] = entity.position[0];
         this->position[1] = entity.position[1];
         this->velocity[0] = entity.velocity[0];
