@@ -109,9 +109,8 @@ void Game_handler::game() noexcept {
     }
 }
 
-vector<int> Game_handler::build_floor() const noexcept {
+vector<int> Game_handler::build_floor() noexcept {
     uniform_int_distribution<int> uniform4 = uniform_int_distribution<int>(0, 4);
-    uniform_real_distribution<double> uniform_unit = uniform_real_distribution<double>();
     vector<int> queue(1, 36);
     vector<int> reachable(1, 36);
     while (reachable.size() < 8) {
@@ -158,7 +157,7 @@ vector<Enemy> Game_handler::build_enemies(const vector<vector<bool>> &room) noex
     return enemies;
 }
 
-vector<vector<bool>> Game_handler::build_room(const vector<Direction> &directions) const noexcept {
+vector<vector<bool>> Game_handler::build_room(const vector<Direction> &directions) noexcept {
     vector<vector<bool>> room(16, vector<bool>(16));
     for (const Direction &direction: directions) {
         switch (direction) {

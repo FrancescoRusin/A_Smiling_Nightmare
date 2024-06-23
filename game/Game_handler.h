@@ -20,9 +20,9 @@ public:
 
     void game() noexcept;
 
-    vector<int> build_floor() const noexcept;
+    vector<int> build_floor() noexcept;
 
-    vector<vector<bool>> build_room(const vector<Direction> &directions) const noexcept;
+    vector<vector<bool>> build_room(const vector<Direction> &directions) noexcept;
 
     vector<Enemy> build_enemies(const vector<vector<bool>> &room) noexcept;
 
