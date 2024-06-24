@@ -203,10 +203,10 @@ vector<vector<bool>> Game_handler::build_room(const vector<Direction> &direction
 
 void Game_handler::adapt(int prev_room_hp) {
     // relevant stats
-    double enemy_shot_relevance = handler.total_n_of_enemies == handler.total_n_of_karateka ? .75 :
+    double enemy_shot_relevance = handler.total_n_of_enemies == handler.total_n_of_karateka ? 1.0 :
             (handler.floor_data.enemy_shots_hit / static_cast<double>(max(handler.floor_data.enemy_contact_hits + handler.floor_data.enemy_shots_hit + handler.floor_data.enemy_explosion_hits, 1))) /
             (max(handler.total_n_of_enemies - handler.total_n_of_karateka, 1) / static_cast<double>(handler.total_n_of_enemies));
-    double contact_hit_relevance = handler.total_n_of_karateka == 0 ? .75 :
+    double contact_hit_relevance = handler.total_n_of_karateka == 0 ? 1.0 :
             (handler.floor_data.enemy_contact_hits / static_cast<double>(max(handler.floor_data.enemy_contact_hits + handler.floor_data.enemy_shots_hit + handler.floor_data.enemy_explosion_hits, 1))) /
             (handler.total_n_of_karateka / static_cast<double>(max(handler.total_n_of_enemies, 1)));
     double protagonist_swing_preference = handler.floor_data.protagonist_swings_hit /
